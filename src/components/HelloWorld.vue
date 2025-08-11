@@ -25,8 +25,8 @@ function calculateTimeElapsed(timestamp1, timestamp2) {
     return (new Date(timestamp2) - new Date(timestamp1)) / 1000 // Time in seconds
 }
 
-// Helper function to check if two points are within 500 feet of each other
-function arePointsWithin500Feet(lat1, lon1, lat2, lon2) {
+// Helper function to check if two points are within 200 feet of each other
+function arePointsWithin350Feet(lat1, lon1, lat2, lon2) {
     const R = 6371e3; // Earth's radius in meters
     const toRadians = (deg) => (deg * Math.PI) / 180;
 
@@ -43,7 +43,7 @@ function arePointsWithin500Feet(lat1, lon1, lat2, lon2) {
     const distanceInMeters = R * c; // Distance in meters
     const distanceInFeet = distanceInMeters * 3.28084; // Convert meters to feet
 
-    return distanceInFeet <= 500; // Check if within 500 feet
+    return distanceInFeet <= 350; // Check if within 200 feet
 }
 
 defineProps({
@@ -92,9 +92,30 @@ onMounted(async () => {
         const time = calculateTimeElapsed(prev.timestamp, item.timestamp)
         cumulativeDistance += distance
         cumulativeTime += time
+
+        console.log('stops array:', stopsArray[0].intersections.stops)
+        let stopName = 'No Intersection Stop'
+        // Check if the current point is within 500 feet of any intersection stop
+        stopsArray[0].intersections.stops.forEach((stop) => {
+            if (arePointsWithin350Feet(item.latitude, item.longitude, stop.location.latitude, stop.location.longitude)) {
+                console.log(`Point at ${item.latitude}, ${item.longitude} is within 500 feet of stop ${stop.stop_name}`)
+                stopName = stop.stop_name
+            }
+        })
+        let stationName = 'No Station Stop'
+        // Check if the current point is within 500 feet of any station stop
+        stopsArray[0].inbound.stops.forEach((stop) => {
+            if (arePointsWithin350Feet(item.latitude, item.longitude, stop.location.latitude, stop.location.longitude)) {
+                console.log(`Point at ${item.latitude}, ${item.longitude} is within 500 feet of station ${stop.stop_name}`)
+                stationName = stop.stop_name
+            }
+        })
+
         return {
             cumulativeDistance: cumulativeDistance,
             cumulativeTime: cumulativeTime,
+            intersectionName: stopName,
+            stationName: stationName,
         }
     })
 
@@ -162,22 +183,32 @@ watch(
             .attr('cx', (d) => x(d.cumulativeTime))
             .attr('cy', (d) => y(d.cumulativeDistance))
             .attr('r', 5) // Circle radius
-            .attr('fill', 'red')
+            .attr('fill', (d) => {
+                if (d.stationName === 'No Station Stop' && d.intersectionName === 'No Intersection Stop') {
+                    return 'red'; // Both conditions are true
+                } else if (d.stationName === 'No Station Stop') {
+                    return 'yellow'; // Only stationName condition is true
+                } else if (d.intersectionName === 'No Intersection Stop') {
+                    return 'blue'; // Only intersectionName condition is true
+                } else {
+                    return 'green'; // Default color for other cases
+                }
+            })
             .on('mouseover', function (event, d) {
                 const minutes = Math.floor(d.cumulativeTime / 60);
                 const seconds = Math.floor(d.cumulativeTime % 60);
                 tooltip
                     .style('opacity', 1)
                     .html(
-                        `Cumulative Time: ${minutes}m ${seconds}s<br>Cumulative Distance: ${d.cumulativeDistance.toFixed(2)} m`
+                        `Cumulative Time: ${minutes}m ${seconds}s<br>Cumulative Distance: ${d.cumulativeDistance.toFixed(2)} m<br>Intersection: ${d.intersectionName}<br>Station: ${d.stationName}`
                     )
                     .style('left', `${event.pageX + 10}px`)
                     .style('top', `${event.pageY - 20}px`)
-                    .style('color', 'black')
+                    .style('color', 'black');
             })
             .on('mouseout', function () {
-                tooltip.style('opacity', 0)
-            })
+                tooltip.style('opacity', 0);
+            });
 
         // Add tooltip
         const tooltip = d3
