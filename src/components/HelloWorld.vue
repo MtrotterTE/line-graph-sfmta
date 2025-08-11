@@ -25,6 +25,27 @@ function calculateTimeElapsed(timestamp1, timestamp2) {
     return (new Date(timestamp2) - new Date(timestamp1)) / 1000 // Time in seconds
 }
 
+// Helper function to check if two points are within 500 feet of each other
+function arePointsWithin500Feet(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Earth's radius in meters
+    const toRadians = (deg) => (deg * Math.PI) / 180;
+
+    const φ1 = toRadians(lat1);
+    const φ2 = toRadians(lat2);
+    const Δφ = toRadians(lat2 - lat1);
+    const Δλ = toRadians(lon2 - lon1);
+
+    const a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    const distanceInMeters = R * c; // Distance in meters
+    const distanceInFeet = distanceInMeters * 3.28084; // Convert meters to feet
+
+    return distanceInFeet <= 500; // Check if within 500 feet
+}
+
 defineProps({
     msg: String,
 })
@@ -34,21 +55,30 @@ const graphData = ref([])
 
 // Load and process the data
 onMounted(async () => {
+    // Load data from gfts_realtime_data_2025-05-11_8-00.json
     const response = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-11_8-00.json`)
     const data = await response.json()
 
     // Convert the JSON object into an array
     const dataArray = Array.isArray(data) ? data : Object.values(data)
 
-    // Filter data for trip_id "11735747_M13"
+    // Filter data for trip_id "11735822_M13"
     const filteredData = dataArray.filter((item) => item.trip_id === '11735822_M13')
 
     let cumulativeDistance = 0
     let cumulativeTime = 0
 
+    // Load data from stops.json
+    const stopsResponse = await fetch(`${import.meta.env.BASE_URL}data/stops.json`)
+    const stopsData = await stopsResponse.json()
+
+    // Convert the JSON object into an array
+    const stopsArray = Array.isArray(stopsData) ? stopsData : Object.values(stopsData)
+
+    console.log('Stops Data:', stopsArray)
+
     // Calculate distance and time differences cumulatively
     const processedData = filteredData.map((item, index, array) => {
-        console.log('Index:', index, 'Item:', item);
         if (index === 0) {
             return { cumulativeDistance: 0, cumulativeTime: 0 }
         }
@@ -60,12 +90,8 @@ onMounted(async () => {
             item.longitude
         )
         const time = calculateTimeElapsed(prev.timestamp, item.timestamp)
-        console.log('Distance:', distance, 'Time:', time);
-        cumulativeDistance += distance;
-        cumulativeTime += time;
-
-        console.log("cumulativeDistance", cumulativeDistance)
-        console.log("cumulativeTime", cumulativeTime)
+        cumulativeDistance += distance
+        cumulativeTime += time
         return {
             cumulativeDistance: cumulativeDistance,
             cumulativeTime: cumulativeTime,
@@ -107,13 +133,19 @@ watch(
             .x((d) => x(d.cumulativeTime)) // Use cumulativeTime for X
             .y((d) => y(d.cumulativeDistance)) // Use cumulativeDistance for Y
 
-        svg.append('g')
-            .attr('transform', `translate(0,${height - margin.bottom})`)
-            .call(d3.axisBottom(x))
+            svg.append('g')
+                .attr('transform', `translate(0,${height - margin.bottom})`)
+                .call(
+                    d3.axisBottom(x).tickFormat((d) => {
+                        const minutes = Math.floor(d / 60);
+                        const seconds = Math.floor(d % 60);
+                        return `${minutes}m ${seconds}s`;
+                    })
+                );
 
-        svg.append('g')
-            .attr('transform', `translate(${margin.left},0)`)
-            .call(d3.axisLeft(y))
+            svg.append('g')
+                .attr('transform', `translate(${margin.left},0)`)
+                .call(d3.axisLeft(y));
 
         svg.append('path')
             .datum(newData)
@@ -132,10 +164,12 @@ watch(
             .attr('r', 5) // Circle radius
             .attr('fill', 'red')
             .on('mouseover', function (event, d) {
+                const minutes = Math.floor(d.cumulativeTime / 60);
+                const seconds = Math.floor(d.cumulativeTime % 60);
                 tooltip
                     .style('opacity', 1)
                     .html(
-                        `Cumulative Time: ${d.cumulativeTime.toFixed(2)} s<br>Cumulative Distance: ${d.cumulativeDistance.toFixed(2)} m`
+                        `Cumulative Time: ${minutes}m ${seconds}s<br>Cumulative Distance: ${d.cumulativeDistance.toFixed(2)} m`
                     )
                     .style('left', `${event.pageX + 10}px`)
                     .style('top', `${event.pageY - 20}px`)
@@ -156,6 +190,7 @@ watch(
             .style('border-radius', '5px')
             .style('opacity', 0)
             .style('pointer-events', 'none')
+            .style('text-align', 'right'); // Right-align the text
 
         // Update x-axis label
         svg.append('text')
@@ -183,7 +218,9 @@ watch(
         <v-row>
             <v-col>
                 <v-card>
-                    <v-card-title>Line Graph</v-card-title>
+                    <v-card-title>
+                        Tenco CityScale K Line Intersection Delays For Inbound Trip_ID = 11735822_M13
+                    </v-card-title>
                     <v-card-text>
                         <svg id="line-graph" width="1100" height="80vh"></svg> <!-- Updated dimensions -->
                     </v-card-text>
