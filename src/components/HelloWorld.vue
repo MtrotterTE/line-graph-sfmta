@@ -239,6 +239,36 @@ watch(
             .attr('font-size', '12px')
             .attr('transform', 'rotate(-90)')
             .text('Cumulative Distance (meters)')
+
+        // Add legend
+        const legendData = [
+            { color: 'blue', label: 'Station Only' },
+            { color: 'yellow', label: 'Intersection Only' },
+            { color: 'red', label: 'No Station or Intersection' },
+            { color: 'green', label: 'Station and Intersection' },
+        ];
+
+        const legend = svg
+            .append('g')
+            .attr('transform', `translate(100, ${margin.top})`); // Position the legend
+
+        legendData.forEach((item, index) => {
+            const legendRow = legend
+                .append('g')
+                .attr('transform', `translate(0, ${index * 20})`); // Space rows vertically
+
+            legendRow
+                .append('circle')
+                .attr('r', 5) // Circle radius
+                .attr('fill', item.color);
+
+            legendRow
+                .append('text')
+                .attr('x', 15) // Position text to the right of the circle
+                .attr('y', 5) // Align text vertically with the circle
+                .attr('font-size', '12px')
+                .text(item.label);
+        });
     },
     { immediate: true }
 )
