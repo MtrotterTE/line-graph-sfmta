@@ -75,8 +75,6 @@ onMounted(async () => {
     // Convert the JSON object into an array
     const stopsArray = Array.isArray(stopsData) ? stopsData : Object.values(stopsData)
 
-    console.log('Stops Data:', stopsArray)
-
     // Calculate distance and time differences cumulatively
     const processedData = filteredData.map((item, index, array) => {
         if (index === 0) {
@@ -93,12 +91,10 @@ onMounted(async () => {
         cumulativeDistance += distance
         cumulativeTime += time
 
-        console.log('stops array:', stopsArray[0].intersections.stops)
         let stopName = 'No Intersection Stop'
         // Check if the current point is within 500 feet of any intersection stop
         stopsArray[0].intersections.stops.forEach((stop) => {
             if (arePointsWithin350Feet(item.latitude, item.longitude, stop.location.latitude, stop.location.longitude)) {
-                console.log(`Point at ${item.latitude}, ${item.longitude} is within 500 feet of stop ${stop.stop_name}`)
                 stopName = stop.stop_name
             }
         })
@@ -106,7 +102,6 @@ onMounted(async () => {
         // Check if the current point is within 500 feet of any station stop
         stopsArray[0].inbound.stops.forEach((stop) => {
             if (arePointsWithin350Feet(item.latitude, item.longitude, stop.location.latitude, stop.location.longitude)) {
-                console.log(`Point at ${item.latitude}, ${item.longitude} is within 500 feet of station ${stop.stop_name}`)
                 stationName = stop.stop_name
             }
         })
@@ -119,8 +114,6 @@ onMounted(async () => {
         }
     })
 
-    console.log('Processed Data:', processedData)
-
     // Add cumulative distance and time to each data point
     graphData.value = processedData.slice(1) // Remove the first entry (0, 0)
 })
@@ -129,7 +122,6 @@ onMounted(async () => {
 watch(
     () => graphData.value,
     (newData) => {
-        console.log(newData)
         if (!newData.length) return
 
         const svg = d3.select('#line-graph')
@@ -176,6 +168,7 @@ watch(
             .attr('d', line)
 
         // Add circles to each data point
+        /*
         svg.selectAll('circle')
             .data(newData)
             .enter()
@@ -208,7 +201,7 @@ watch(
             })
             .on('mouseout', function () {
                 tooltip.style('opacity', 0);
-            });
+            });*/
 
         // Add tooltip
         const tooltip = d3
