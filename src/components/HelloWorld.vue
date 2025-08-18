@@ -62,8 +62,31 @@ onMounted(async () => {
     // Convert the JSON object into an array
     const dataArray = Array.isArray(data) ? data : Object.values(data)
 
+    // Group data by trip_id into a 2D array
+    const filteredData = Object.values(
+        dataArray.reduce((acc, item) => {
+            if (item.route_id === "K" && item.direction_id === 1) { // Filter for route_id "K"
+                if (!acc[item.trip_id]) {
+                    acc[item.trip_id] = []
+                }
+                acc[item.trip_id].push(item)
+            }
+            return acc
+        }, {})
+    )
+    console.log('Filtered Data:', filteredData);
+
+    const uniqueTripCount = filteredData.length
+    console.log("Number of unique trip_ids:", uniqueTripCount)
+
+    filteredData.forEach((trip, index) => {
+        if (trip[0].trip_id == "11755717_M13") {
+            console.log("Found trip with ID 11755717_M13 at index:", index);
+        }
+    })
+
     // Filter data for trip_id "11735822_M13"
-    const filteredData = dataArray.filter((item) => item.trip_id === '11735822_M13')
+    //const filteredData = dataArray.filter((item) => item.trip_id === '11735822_M13')
 
     let cumulativeDistance = 0
     let cumulativeTime = 0
@@ -75,196 +98,111 @@ onMounted(async () => {
     // Convert the JSON object into an array
     const stopsArray = Array.isArray(stopsData) ? stopsData : Object.values(stopsData)
 
-    // Calculate distance and time differences cumulatively
-    const processedData = filteredData.map((item, index, array) => {
-        if (index === 0) {
-            return { cumulativeDistance: 0, cumulativeTime: 0 }
-        }
-        const prev = array[index - 1]
-        const distance = calculateDistance(
-            prev.latitude,
-            prev.longitude,
-            item.latitude,
-            item.longitude
-        )
-        const time = calculateTimeElapsed(prev.timestamp, item.timestamp)
-        cumulativeDistance += distance
-        cumulativeTime += time
+    const allProcessedTrips = filteredData.map((trip) => {
+        let cumulativeDistance = 0;
+        let cumulativeTime = 0;
 
-        let stopName = 'No Intersection Stop'
-        // Check if the current point is within 500 feet of any intersection stop
-        stopsArray[0].intersections.stops.forEach((stop) => {
-            if (arePointsWithin350Feet(item.latitude, item.longitude, stop.location.latitude, stop.location.longitude)) {
-                stopName = stop.stop_name
+        return trip.map((item, index, array) => {
+            if (index === 0) {
+                return { cumulativeDistance: 0, cumulativeTime: 0 };
             }
-        })
-        let stationName = 'No Station Stop'
-        // Check if the current point is within 500 feet of any station stop
-        stopsArray[0].inbound.stops.forEach((stop) => {
-            if (arePointsWithin350Feet(item.latitude, item.longitude, stop.location.latitude, stop.location.longitude)) {
-                stationName = stop.stop_name
-            }
-        })
 
-        return {
-            cumulativeDistance: cumulativeDistance,
-            cumulativeTime: cumulativeTime,
-            intersectionName: stopName,
-            stationName: stationName,
-        }
-    })
+            const prev = array[index - 1];
+            const distance = calculateDistance(
+                prev.latitude,
+                prev.longitude,
+                item.latitude,
+                item.longitude
+            );
+            const time = calculateTimeElapsed(prev.timestamp, item.timestamp);
+            cumulativeDistance += distance;
+            cumulativeTime += time;
 
-    // Add cumulative distance and time to each data point
-    graphData.value = processedData.slice(1) // Remove the first entry (0, 0)
+            return {
+                cumulativeDistance,
+                cumulativeTime,
+                trip_id: item.trip_id,
+            };
+        }).slice(1); // remove (0,0)
+    });
+
+    graphData.value = allProcessedTrips; // Now it's an array of arrays
 })
 
 // Update the graph to use cumulative values
 watch(
     () => graphData.value,
-    (newData) => {
-        if (!newData.length) return
+    (allTrips) => {
+        if (!allTrips.length) return;
 
-        const svg = d3.select('#line-graph')
-        svg.selectAll('*').remove() // Clear previous graph
+        const svg = d3.select('#line-graph');
+        svg.selectAll('*').remove();
 
-        const width = 1100 // Updated width
-        const height = window.innerHeight * 0.8 // Updated height (80vh)
-        const margin = { top: 20, right: 30, bottom: 50, left: 60 } // Adjusted margins for labels
+        const width = 1100;
+        const height = window.innerHeight * 0.8;
+        const margin = { top: 20, right: 30, bottom: 50, left: 60 };
 
-        const x = d3
-            .scaleLinear()
-            .domain([0, d3.max(newData, (d) => d.cumulativeTime)]) // Use cumulativeTime for X
-            .range([margin.left, width - margin.right])
+        // Flatten trips to calculate global max
+        const flatData = allTrips.flat();
 
-        const y = d3
-            .scaleLinear()
-            .domain([0, d3.max(newData, (d) => d.cumulativeDistance)]) // Use cumulativeDistance for Y
-            .range([height - margin.bottom, margin.top])
+        const x = d3.scaleLinear()
+            .domain([0, d3.max(flatData, d => d?.cumulativeTime)])
+            .range([margin.left, width - margin.right]);
 
-        const line = d3
-            .line()
-            .x((d) => x(d.cumulativeTime)) // Use cumulativeTime for X
-            .y((d) => y(d.cumulativeDistance)) // Use cumulativeDistance for Y
+        const y = d3.scaleLinear()
+            .domain([0, d3.max(flatData, d => d?.cumulativeDistance)])
+            .range([height - margin.bottom, margin.top]);
 
-            svg.append('g')
-                .attr('transform', `translate(0,${height - margin.bottom})`)
-                .call(
-                    d3.axisBottom(x).tickFormat((d) => {
-                        const minutes = Math.floor(d / 60);
-                        const seconds = Math.floor(d % 60);
-                        return `${minutes}m ${seconds}s`;
-                    })
-                );
+        const line = d3.line()
+            .x(d => x(d?.cumulativeTime))
+            .y(d => y(d?.cumulativeDistance));
 
-            svg.append('g')
-                .attr('transform', `translate(${margin.left},0)`)
-                .call(d3.axisLeft(y));
+        // Axes
+        svg.append('g')
+            .attr('transform', `translate(0,${height - margin.bottom})`)
+            .call(
+                d3.axisBottom(x).tickFormat((d) => {
+                    const minutes = Math.floor(d / 60);
+                    const seconds = Math.floor(d % 60);
+                    return `${minutes}m ${seconds}s`;
+                })
+            );
 
-        svg.append('path')
-            .datum(newData)
-            .attr('fill', 'none')
-            .attr('stroke', 'steelblue')
-            .attr('stroke-width', 1.5)
-            .attr('d', line)
+        svg.append('g')
+            .attr('transform', `translate(${margin.left},0)`)
+            .call(d3.axisLeft(y));
 
-        // Add circles to each data point
-        /*
-        svg.selectAll('circle')
-            .data(newData)
-            .enter()
-            .append('circle')
-            .attr('cx', (d) => x(d.cumulativeTime))
-            .attr('cy', (d) => y(d.cumulativeDistance))
-            .attr('r', 5) // Circle radius
-            .attr('fill', (d) => {
-                if (d.stationName === 'No Station Stop' && d.intersectionName === 'No Intersection Stop') {
-                    return 'red'; // Both conditions are true
-                } else if (d.stationName === 'No Station Stop') {
-                    return 'yellow'; // Only stationName condition is true
-                } else if (d.intersectionName === 'No Intersection Stop') {
-                    return 'blue'; // Only intersectionName condition is true
-                } else {
-                    return 'green'; // Default color for other cases
-                }
-            })
-            .on('mouseover', function (event, d) {
-                const minutes = Math.floor(d.cumulativeTime / 60);
-                const seconds = Math.floor(d.cumulativeTime % 60);
-                tooltip
-                    .style('opacity', 1)
-                    .html(
-                        `Cumulative Time: ${minutes}m ${seconds}s<br>Cumulative Distance: ${d.cumulativeDistance.toFixed(2)} m<br>Intersection: ${d.intersectionName}<br>Station: ${d.stationName}`
-                    )
-                    .style('left', `${event.pageX + 10}px`)
-                    .style('top', `${event.pageY - 20}px`)
-                    .style('color', 'black');
-            })
-            .on('mouseout', function () {
-                tooltip.style('opacity', 0);
-            });*/
+        // Color scale per trip
+        const color = d3.scaleOrdinal(d3.schemeCategory10);
 
-        // Add tooltip
-        const tooltip = d3
-            .select('body')
-            .append('div')
-            .style('position', 'absolute')
-            .style('background-color', 'white')
-            .style('border', '1px solid #ccc')
-            .style('padding', '5px')
-            .style('border-radius', '5px')
-            .style('opacity', 0)
-            .style('pointer-events', 'none')
-            .style('text-align', 'right'); // Right-align the text
+        // Draw one line per trip
+        allTrips.forEach((trip, i) => {
+            svg.append('path')
+                .datum(trip)
+                .attr('fill', 'none')
+                .attr('stroke', color(i))
+                .attr('stroke-width', 1.5)
+                .attr('d', line);
+        });
 
-        // Update x-axis label
+        // Axis labels (same as before)
         svg.append('text')
             .attr('x', width / 2)
-            .attr('y', height - 10) // Position below the x-axis
+            .attr('y', height - 10)
             .attr('text-anchor', 'middle')
             .attr('font-size', '12px')
-            .text('Cumulative Time (seconds)')
+            .text('Cumulative Time (seconds)');
 
-        // Update y-axis label
         svg.append('text')
             .attr('x', -(height / 2))
-            .attr('y', 15) // Position to the left of the y-axis
+            .attr('y', 15)
             .attr('text-anchor', 'middle')
             .attr('font-size', '12px')
             .attr('transform', 'rotate(-90)')
-            .text('Cumulative Distance (meters)')
-
-        // Add legend
-        const legendData = [
-            { color: 'blue', label: 'Station Only' },
-            { color: 'yellow', label: 'Intersection Only' },
-            { color: 'red', label: 'No Station or Intersection' },
-            { color: 'green', label: 'Station and Intersection' },
-        ];
-
-        const legend = svg
-            .append('g')
-            .attr('transform', `translate(100, ${margin.top})`); // Position the legend
-
-        legendData.forEach((item, index) => {
-            const legendRow = legend
-                .append('g')
-                .attr('transform', `translate(0, ${index * 20})`); // Space rows vertically
-
-            legendRow
-                .append('circle')
-                .attr('r', 5) // Circle radius
-                .attr('fill', item.color);
-
-            legendRow
-                .append('text')
-                .attr('x', 15) // Position text to the right of the circle
-                .attr('y', 5) // Align text vertically with the circle
-                .attr('font-size', '12px')
-                .text(item.label);
-        });
+            .text('Cumulative Distance (meters)');
     },
     { immediate: true }
-)
+);
 </script>
 
 <template>
@@ -273,7 +211,7 @@ watch(
             <v-col>
                 <v-card>
                     <v-card-title>
-                        Tenco CityScale K Line Intersection Delays For Inbound Trip_ID = 11735822_M13
+                        Tenco CityScale K Line Intersection Delays For Inbound K Line
                     </v-card-title>
                     <v-card-text>
                         <svg id="line-graph" width="1100" height="80vh"></svg> <!-- Updated dimensions -->
