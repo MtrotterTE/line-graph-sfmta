@@ -1,0 +1,45 @@
+// Helper function to calculate distance between two geographic points
+function calculateDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3 // Earth's radius in meters
+    const toRadians = (deg) => (deg * Math.PI) / 180
+
+    const φ1 = toRadians(lat1)
+    const φ2 = toRadians(lat2)
+    const Δφ = toRadians(lat2 - lat1)
+    const Δλ = toRadians(lon2 - lon1)
+
+    const a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+    return R * c // Distance in meters
+}
+
+// Helper function to calculate time elapsed in seconds
+function calculateTimeElapsed(timestamp1, timestamp2) {
+    return (new Date(timestamp2) - new Date(timestamp1)) / 1000 // Time in seconds
+}
+
+// Helper function to check if two points are within 200 feet of each other
+function arePointsWithin350Feet(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // Earth's radius in meters
+    const toRadians = (deg) => (deg * Math.PI) / 180;
+
+    const φ1 = toRadians(lat1);
+    const φ2 = toRadians(lat2);
+    const Δφ = toRadians(lat2 - lat1);
+    const Δλ = toRadians(lon2 - lon1);
+
+    const a =
+        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    const distanceInMeters = R * c; // Distance in meters
+    const distanceInFeet = distanceInMeters * 3.28084; // Convert meters to feet
+
+    return distanceInFeet <= 350; // Check if within 200 feet
+}
+
+export { calculateDistance, calculateTimeElapsed, arePointsWithin350Feet }

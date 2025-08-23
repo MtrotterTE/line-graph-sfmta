@@ -1,50 +1,7 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import * as d3 from 'd3'
-
-// Helper function to calculate distance between two geographic points
-function calculateDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3 // Earth's radius in meters
-    const toRadians = (deg) => (deg * Math.PI) / 180
-
-    const φ1 = toRadians(lat1)
-    const φ2 = toRadians(lat2)
-    const Δφ = toRadians(lat2 - lat1)
-    const Δλ = toRadians(lon2 - lon1)
-
-    const a =
-        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2)
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
-
-    return R * c // Distance in meters
-}
-
-// Helper function to calculate time elapsed in seconds
-function calculateTimeElapsed(timestamp1, timestamp2) {
-    return (new Date(timestamp2) - new Date(timestamp1)) / 1000 // Time in seconds
-}
-
-// Helper function to check if two points are within 200 feet of each other
-function arePointsWithin350Feet(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // Earth's radius in meters
-    const toRadians = (deg) => (deg * Math.PI) / 180;
-
-    const φ1 = toRadians(lat1);
-    const φ2 = toRadians(lat2);
-    const Δφ = toRadians(lat2 - lat1);
-    const Δλ = toRadians(lon2 - lon1);
-
-    const a =
-        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    const distanceInMeters = R * c; // Distance in meters
-    const distanceInFeet = distanceInMeters * 3.28084; // Convert meters to feet
-
-    return distanceInFeet <= 350; // Check if within 200 feet
-}
+import { calculateDistance, calculateTimeElapsed, arePointsWithin350Feet } from '../utils/helpers.js'
 
 defineProps({
     msg: String,
@@ -55,58 +12,77 @@ const graphData = ref([])
 
 // Load and process the data
 onMounted(async () => {
-    // Load data from gfts_realtime_data_2025-05-11_8-00.json
-    const response = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-11_8-00.json`)
-    const data = await response.json()
+    // Load data from may 11 to may 16, 2025
+    const responseDayOne = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-11_8-00_PST.json`)
+    const responseDayTwo = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-12_8-00_PST.json`)
+    const responseDayThree = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-13_8-00_PST.json`)
+    const responseDayFour = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-14_8-00_PST.json`)
+    const responseDayFive = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-15_8-00_PST.json`)
+    const responseDaySix = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-16_8-00_PST.json`)
+    const dataDayOne = await responseDayOne.json()
+    const dataDayTwo = await responseDayTwo.json()
+    const dataDayThree = await responseDayThree.json()
+    const dataDayFour = await responseDayFour.json()
+    const dataDayFive = await responseDayFive.json()
+    const dataDaySix = await responseDaySix.json()
 
     // Convert the JSON object into an array
-    const dataArray = Array.isArray(data) ? data : Object.values(data)
+    const dataArrayDayOne = Array.isArray(dataDayOne) ? dataDayOne : Object.values(dataDayOne)
+    const dataArrayDayTwo = Array.isArray(dataDayTwo) ? dataDayTwo : Object.values(dataDayTwo)
+    const dataArrayDayThree = Array.isArray(dataDayThree) ? dataDayThree : Object.values(dataDayThree)
+    const dataArrayDayFour = Array.isArray(dataDayFour) ? dataDayFour : Object.values(dataDayFour)
+    const dataArrayDayFive = Array.isArray(dataDayFive) ? dataDayFive : Object.values(dataDayFive)
+    const dataArrayDaySix = Array.isArray(dataDaySix) ? dataDaySix : Object.values(dataDaySix)
 
-    // Group data by trip_id into a 2D array
+    const combinedData = [ 
+        ...dataArrayDayOne,
+        ...dataArrayDayTwo,
+        ...dataArrayDayThree,
+        ...dataArrayDayFour,
+        ...dataArrayDayFive,
+        ...dataArrayDaySix
+    ];
+
+    // Group data by trip_id, vehicle_id, and date into a 2D array
     const filteredData = Object.values(
-        dataArray.reduce((acc, item) => {
-            if (item.route_id === "K" && item.direction_id === 1) { // Filter for route_id "K"
-                if (!acc[item.trip_id]) {
-                    acc[item.trip_id] = []
+        combinedData.reduce((acc, item) => {
+            if (item.route_id === "K" && item.direction_id === 1) { // Filter for route_id "K" and direction inbound
+                const uniqueKey = item.trip_id + '_' + item.vehicle_id + '_' + item.date_pst; // Unique key for grouping by trip_id, vehicle_id, and date
+                if (!acc[uniqueKey]) {
+                    acc[uniqueKey] = []
                 }
-                acc[item.trip_id].push(item)
+                acc[uniqueKey].push(item)
             }
             return acc
         }, {})
     )
-    console.log('Filtered Data:', filteredData);
 
+    // Log the number of unique trips for debugging purposes
     const uniqueTripCount = filteredData.length
-    console.log("Number of unique trip_ids:", uniqueTripCount)
-
-    filteredData.forEach((trip, index) => {
-        if (trip[0].trip_id == "11755717_M13") {
-            console.log("Found trip with ID 11755717_M13 at index:", index);
-        }
-    })
-
-    // Filter data for trip_id "11735822_M13"
-    //const filteredData = dataArray.filter((item) => item.trip_id === '11735822_M13')
-
-    let cumulativeDistance = 0
-    let cumulativeTime = 0
+    console.log("Number of unique trips:", uniqueTripCount)
 
     // Load data from stops.json
     const stopsResponse = await fetch(`${import.meta.env.BASE_URL}data/stops.json`)
     const stopsData = await stopsResponse.json()
 
-    // Convert the JSON object into an array
+    // Convert the stops JSON object into an array
     const stopsArray = Array.isArray(stopsData) ? stopsData : Object.values(stopsData)
+
+    // Longitude and latitude of San Jose and Geneva Ave to compare to first stop for each unique trip
+    const startStationLongitude = stopsArray[0].inbound.stops[0].location.longitude;
+    const startStationLatitude = stopsArray[0].inbound.stops[0].location.latitude;
 
     const allProcessedTrips = filteredData.map((trip) => {
         let cumulativeDistance = 0;
         let cumulativeTime = 0;
 
         return trip.map((item, index, array) => {
-            if (index === 0) {
+            if (index === 0 || arePointsWithin350Feet(item.latitude, item.longitude, startStationLatitude, startStationLongitude)) {
+                // If it's the first point or within 350 feet of the start station, reset cumulative
                 return { cumulativeDistance: 0, cumulativeTime: 0 };
             }
 
+            // Calculate distance and time from the previous point
             const prev = array[index - 1];
             const distance = calculateDistance(
                 prev.latitude,
@@ -115,6 +91,8 @@ onMounted(async () => {
                 item.longitude
             );
             const time = calculateTimeElapsed(prev.timestamp, item.timestamp);
+
+            // Update cumulative values
             cumulativeDistance += distance;
             cumulativeTime += time;
 
@@ -123,7 +101,7 @@ onMounted(async () => {
                 cumulativeTime,
                 trip_id: item.trip_id,
             };
-        }).slice(1); // remove (0,0)
+        });
     });
 
     graphData.value = allProcessedTrips; // Now it's an array of arrays
@@ -214,7 +192,7 @@ watch(
                         Tenco CityScale K Line Intersection Delays For Inbound K Line
                     </v-card-title>
                     <v-card-text>
-                        <svg id="line-graph" width="1100" height="80vh"></svg> <!-- Updated dimensions -->
+                        <svg id="line-graph" width="1100" height="80vh"></svg>
                     </v-card-text>
                 </v-card>
             </v-col>
