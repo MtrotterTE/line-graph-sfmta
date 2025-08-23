@@ -9,6 +9,7 @@ defineProps({
 
 const graphData = ref([])
 const currentTripIndex = ref(-1)   // -1 means "show all trips"
+const isLoading = ref(true)        // NEW: loading state
 
 // Decide which trips to display: either all or one
 const displayTrips = computed(() => {
@@ -18,106 +19,99 @@ const displayTrips = computed(() => {
 
 // Load and process the data
 onMounted(async () => {
-    // Load data from may 11 to may 16, 2025
-    const responseDayOne = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-11_8-00_PST.json`)
-    const responseDayTwo = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-12_8-00_PST.json`)
-    const responseDayThree = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-13_8-00_PST.json`)
-    const responseDayFour = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-14_8-00_PST.json`)
-    const responseDayFive = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-15_8-00_PST.json`)
-    const responseDaySix = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-16_8-00_PST.json`)
-    const dataDayOne = await responseDayOne.json()
-    const dataDayTwo = await responseDayTwo.json()
-    const dataDayThree = await responseDayThree.json()
-    const dataDayFour = await responseDayFour.json()
-    const dataDayFive = await responseDayFive.json()
-    const dataDaySix = await responseDaySix.json()
+    try {
+        // Load data from may 11 to may 16, 2025
+        const responseDayOne = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-11_8-00_PST.json`)
+        const responseDayTwo = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-12_8-00_PST.json`)
+        const responseDayThree = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-13_8-00_PST.json`)
+        const responseDayFour = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-14_8-00_PST.json`)
+        const responseDayFive = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-15_8-00_PST.json`)
+        const responseDaySix = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-16_8-00_PST.json`)
+        const dataDayOne = await responseDayOne.json()
+        const dataDayTwo = await responseDayTwo.json()
+        const dataDayThree = await responseDayThree.json()
+        const dataDayFour = await responseDayFour.json()
+        const dataDayFive = await responseDayFive.json()
+        const dataDaySix = await responseDaySix.json()
 
-    // Convert the JSON object into an array
-    const dataArrayDayOne = safeToArray(dataDayOne)
-    const dataArrayDayTwo = safeToArray(dataDayTwo)
-    const dataArrayDayThree = safeToArray(dataDayThree)
-    const dataArrayDayFour = safeToArray(dataDayFour)
-    const dataArrayDayFive = safeToArray(dataDayFive)
-    const dataArrayDaySix = safeToArray(dataDaySix)
+        // Convert the JSON object into an array
+        const dataArrayDayOne = safeToArray(dataDayOne)
+        const dataArrayDayTwo = safeToArray(dataDayTwo)
+        const dataArrayDayThree = safeToArray(dataDayThree)
+        const dataArrayDayFour = safeToArray(dataDayFour)
+        const dataArrayDayFive = safeToArray(dataDayFive)
+        const dataArrayDaySix = safeToArray(dataDaySix)
 
-    const combinedData = [ 
-        ...dataArrayDayOne,
-        ...dataArrayDayTwo,
-        ...dataArrayDayThree,
-        ...dataArrayDayFour,
-        ...dataArrayDayFive,
-        ...dataArrayDaySix
-    ];
+        const combinedData = [ 
+            ...dataArrayDayOne,
+            ...dataArrayDayTwo,
+            ...dataArrayDayThree,
+            ...dataArrayDayFour,
+            ...dataArrayDayFive,
+            ...dataArrayDaySix
+        ];
 
-    // Group data by trip_id, vehicle_id, and date into a 2D array
-    const filteredData = Object.values(
-        combinedData.reduce((acc, item) => {
-            if (item.route_id === "K" && item.direction_id === 1) { // Filter for route_id "K" and direction inbound
-                const uniqueKey = item.trip_id + '_' + item.vehicle_id + '_' + item.date_pst; // Unique key for grouping by trip_id, vehicle_id, and date
-                if (!acc[uniqueKey]) {
-                    acc[uniqueKey] = []
+        // Group data by trip_id, vehicle_id, and date into a 2D array
+        const filteredData = Object.values(
+            combinedData.reduce((acc, item) => {
+                if (item.route_id === "K" && item.direction_id === 1) {
+                    const uniqueKey = item.trip_id + '_' + item.vehicle_id + '_' + item.date_pst
+                    if (!acc[uniqueKey]) {
+                        acc[uniqueKey] = []
+                    }
+                    acc[uniqueKey].push(item)
                 }
-                acc[uniqueKey].push(item)
-            }
-            return acc
-        }, {})
-    )
+                return acc
+            }, {})
+        )
 
-    // Log the number of unique trips for debugging purposes
-    const uniqueTripCount = filteredData.length
-    console.log("Number of unique trips:", uniqueTripCount)
+        const stopsResponse = await fetch(`${import.meta.env.BASE_URL}data/stops.json`)
+        const stopsData = await stopsResponse.json()
+        const stopsArray = Array.isArray(stopsData) ? stopsData : Object.values(stopsData)
 
-    // Load data from stops.json
-    const stopsResponse = await fetch(`${import.meta.env.BASE_URL}data/stops.json`)
-    const stopsData = await stopsResponse.json()
+        const startStationLongitude = stopsArray[0].inbound.stops[0].location.longitude;
+        const startStationLatitude = stopsArray[0].inbound.stops[0].location.latitude;
 
-    // Convert the stops JSON object into an array
-    const stopsArray = Array.isArray(stopsData) ? stopsData : Object.values(stopsData)
+        const allProcessedTrips = filteredData.map((trip) => {
+            let cumulativeDistance = 0;
+            let cumulativeTime = 0;
 
-    // Longitude and latitude of San Jose and Geneva Ave to compare to first stop for each unique trip
-    const startStationLongitude = stopsArray[0].inbound.stops[0].location.longitude;
-    const startStationLatitude = stopsArray[0].inbound.stops[0].location.latitude;
+            return trip.map((item, index, array) => {
+                if (index === 0 || arePointsWithin350Feet(item.latitude, item.longitude, startStationLatitude, startStationLongitude)) {
+                    return { cumulativeDistance: 0, cumulativeTime: 0 };
+                }
 
-    const allProcessedTrips = filteredData.map((trip) => {
-        let cumulativeDistance = 0;
-        let cumulativeTime = 0;
+                const prev = array[index - 1];
+                const distance = calculateDistance(
+                    prev.latitude,
+                    prev.longitude,
+                    item.latitude,
+                    item.longitude
+                );
+                const time = calculateTimeElapsed(prev.timestamp, item.timestamp);
 
-        return trip.map((item, index, array) => {
-            if (index === 0 || arePointsWithin350Feet(item.latitude, item.longitude, startStationLatitude, startStationLongitude)) {
-                // If it's the first point or within 350 feet of the start station, reset cumulative
-                return { cumulativeDistance: 0, cumulativeTime: 0 };
-            }
+                cumulativeDistance += distance;
+                cumulativeTime += time;
 
-            // Calculate distance and time from the previous point
-            const prev = array[index - 1];
-            const distance = calculateDistance(
-                prev.latitude,
-                prev.longitude,
-                item.latitude,
-                item.longitude
-            );
-            const time = calculateTimeElapsed(prev.timestamp, item.timestamp);
-
-            // Update cumulative values
-            cumulativeDistance += distance;
-            cumulativeTime += time;
-
-            return {
-                cumulativeDistance,
-                cumulativeTime,
-                trip_id: item.trip_id,
-            };
+                return {
+                    cumulativeDistance,
+                    cumulativeTime,
+                    trip_id: item.trip_id,
+                };
+            });
         });
-    });
 
-    graphData.value = allProcessedTrips; // Now it's an array of arrays
+        graphData.value = allProcessedTrips
+    } finally {
+        isLoading.value = false  // ✅ stop loading whether success or error
+    }
 })
 
 // Update the graph to use cumulative values
 watch(
     () => displayTrips.value,
     (allTrips) => {
-        if (!allTrips.length) return;
+        if (isLoading.value || !allTrips.length) return;
 
         const svg = d3.select('#line-graph');
         svg.selectAll('*').remove();
@@ -126,7 +120,6 @@ watch(
         const height = window.innerHeight * 0.8;
         const margin = { top: 20, right: 30, bottom: 50, left: 60 };
 
-        // Flatten trips to calculate global max
         const flatData = allTrips.flat();
 
         const x = d3.scaleLinear()
@@ -141,7 +134,6 @@ watch(
             .x(d => x(d?.cumulativeTime))
             .y(d => y(d?.cumulativeDistance));
 
-        // Axes
         svg.append('g')
             .attr('transform', `translate(0,${height - margin.bottom})`)
             .call(
@@ -156,10 +148,8 @@ watch(
             .attr('transform', `translate(${margin.left},0)`)
             .call(d3.axisLeft(y));
 
-        // Color scale per trip
         const color = d3.scaleOrdinal(d3.schemeCategory10);
 
-        // Draw one line per trip
         allTrips.forEach((trip, i) => {
             svg.append('path')
                 .datum(trip)
@@ -169,7 +159,6 @@ watch(
                 .attr('d', line);
         });
 
-        // Axis labels (same as before)
         svg.append('text')
             .attr('x', width / 2)
             .attr('y', height - 10)
@@ -188,7 +177,7 @@ watch(
     { immediate: true }
 );
 
-// Handlers for cycling
+// Handlers
 const showPrevTrip = () => {
     if (!graphData.value.length) return
     if (currentTripIndex.value === -1) currentTripIndex.value = 0
@@ -224,7 +213,22 @@ const showAllTrips = () => {
                                 Showing All Trips ({{ graphData.length }})
                             </span>
                         </div>
-                        <svg id="line-graph" width="1100" height="80vh"></svg>
+
+                        <!-- Graph container with loader overlay -->
+                        <div class="graph-container relative" style="width:1100px; height:80vh;">
+                            <div
+                                v-if="isLoading"
+                                id="loader"
+                                class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 z-10"
+                            >
+                                <v-progress-circular
+                                    indeterminate
+                                    color="primary"
+                                    size="64"
+                                />
+                            </div>
+                            <svg id="line-graph" width="1100" height="100%"></svg>
+                        </div>
                     </v-card-text>
                 </v-card>
             </v-col>
@@ -233,11 +237,21 @@ const showAllTrips = () => {
 </template>
 
 <style scoped>
-.read-the-docs {
-    color: #888;
-}
-
 .v-btn {
     margin-right: 12px;
+}
+.graph-container {
+    position: relative;
+}
+#loader {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
 }
 </style>
