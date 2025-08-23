@@ -42,4 +42,12 @@ function arePointsWithin350Feet(lat1, lon1, lat2, lon2) {
     return distanceInFeet <= 350; // Check if within 200 feet
 }
 
-export { calculateDistance, calculateTimeElapsed, arePointsWithin350Feet }
+function safeToArray(json) {
+    if (Array.isArray(json)) return json
+    if (json && typeof json === 'object') {
+        return Object.values(json).filter(v => typeof v === 'object' && v !== json)
+    }
+    return []
+}
+
+export { calculateDistance, calculateTimeElapsed, arePointsWithin350Feet, safeToArray }

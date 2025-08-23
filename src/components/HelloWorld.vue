@@ -1,14 +1,20 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import * as d3 from 'd3'
-import { calculateDistance, calculateTimeElapsed, arePointsWithin350Feet } from '../utils/helpers.js'
+import { calculateDistance, calculateTimeElapsed, arePointsWithin350Feet, safeToArray } from '../utils/helpers.js'
 
 defineProps({
     msg: String,
 })
 
-const count = ref(0)
 const graphData = ref([])
+const currentTripIndex = ref(-1)   // -1 means "show all trips"
+
+// Decide which trips to display: either all or one
+const displayTrips = computed(() => {
+    if (currentTripIndex.value === -1) return graphData.value
+    return [graphData.value[currentTripIndex.value]]
+})
 
 // Load and process the data
 onMounted(async () => {
@@ -27,12 +33,12 @@ onMounted(async () => {
     const dataDaySix = await responseDaySix.json()
 
     // Convert the JSON object into an array
-    const dataArrayDayOne = Array.isArray(dataDayOne) ? dataDayOne : Object.values(dataDayOne)
-    const dataArrayDayTwo = Array.isArray(dataDayTwo) ? dataDayTwo : Object.values(dataDayTwo)
-    const dataArrayDayThree = Array.isArray(dataDayThree) ? dataDayThree : Object.values(dataDayThree)
-    const dataArrayDayFour = Array.isArray(dataDayFour) ? dataDayFour : Object.values(dataDayFour)
-    const dataArrayDayFive = Array.isArray(dataDayFive) ? dataDayFive : Object.values(dataDayFive)
-    const dataArrayDaySix = Array.isArray(dataDaySix) ? dataDaySix : Object.values(dataDaySix)
+    const dataArrayDayOne = safeToArray(dataDayOne)
+    const dataArrayDayTwo = safeToArray(dataDayTwo)
+    const dataArrayDayThree = safeToArray(dataDayThree)
+    const dataArrayDayFour = safeToArray(dataDayFour)
+    const dataArrayDayFive = safeToArray(dataDayFive)
+    const dataArrayDaySix = safeToArray(dataDaySix)
 
     const combinedData = [ 
         ...dataArrayDayOne,
@@ -109,7 +115,7 @@ onMounted(async () => {
 
 // Update the graph to use cumulative values
 watch(
-    () => graphData.value,
+    () => displayTrips.value,
     (allTrips) => {
         if (!allTrips.length) return;
 
@@ -181,6 +187,21 @@ watch(
     },
     { immediate: true }
 );
+
+// Handlers for cycling
+const showPrevTrip = () => {
+    if (!graphData.value.length) return
+    if (currentTripIndex.value === -1) currentTripIndex.value = 0
+    else currentTripIndex.value = (currentTripIndex.value - 1 + graphData.value.length) % graphData.value.length
+}
+const showNextTrip = () => {
+    if (!graphData.value.length) return
+    if (currentTripIndex.value === -1) currentTripIndex.value = 0
+    else currentTripIndex.value = (currentTripIndex.value + 1) % graphData.value.length
+}
+const showAllTrips = () => {
+    currentTripIndex.value = -1
+}
 </script>
 
 <template>
@@ -192,6 +213,17 @@ watch(
                         Tenco CityScale K Line Intersection Delays For Inbound K Line
                     </v-card-title>
                     <v-card-text>
+                        <div class="mb-4 flex gap-2">
+                            <v-btn color="primary" @click="showPrevTrip">Previous Trip</v-btn>
+                            <v-btn color="primary" @click="showNextTrip">Next Trip</v-btn>
+                            <v-btn color="secondary" @click="showAllTrips">Show All Trips</v-btn>
+                            <span v-if="currentTripIndex >= 0">
+                                Showing Trip {{ currentTripIndex + 1 }} of {{ graphData.length }}
+                            </span>
+                            <span v-else>
+                                Showing All Trips ({{ graphData.length }})
+                            </span>
+                        </div>
                         <svg id="line-graph" width="1100" height="80vh"></svg>
                     </v-card-text>
                 </v-card>
@@ -203,5 +235,9 @@ watch(
 <style scoped>
 .read-the-docs {
     color: #888;
+}
+
+.v-btn {
+    margin-right: 12px;
 }
 </style>
