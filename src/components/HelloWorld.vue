@@ -3,62 +3,65 @@ import { ref, onMounted, watch, computed } from 'vue'
 import * as d3 from 'd3'
 import { calculateDistance, calculateTimeElapsed, arePointsWithin350Feet, safeToArray } from '../utils/helpers.js'
 
-defineProps({
-    msg: String,
-})
-
 const graphData = ref([])
 const currentTripIndex = ref(-1)   // -1 means "show all trips"
-const isLoading = ref(true)        // NEW: loading state
+const isLoading = ref(true)
+const availableDates = ref([])
+const selectedDate = ref(null)
+const allDatesMode = ref(false)    // NEW: track whether all dates are shown
 
-// Decide which trips to display: either all or one
-const displayTrips = computed(() => {
-    if (currentTripIndex.value === -1) return graphData.value
-    return [graphData.value[currentTripIndex.value]]
+// ✅ All trips in scope (date-filtered OR all dates)
+const filteredTrips = computed(() => {
+    if (allDatesMode.value) return graphData.value
+    if (!selectedDate.value) return []
+    return graphData.value.filter(trip =>
+        trip.some(item => item.date_pst === selectedDate.value)
+    )
 })
+
+// ✅ Trips to actually render
+const displayTrips = computed(() => {
+    if (currentTripIndex.value === -1) return filteredTrips.value
+    return [filteredTrips.value[currentTripIndex.value]]
+})
+
+// Handlers
+const showPrevTrip = () => {
+    if (!filteredTrips.value.length) return
+    if (currentTripIndex.value === -1) currentTripIndex.value = 0
+    else currentTripIndex.value = (currentTripIndex.value - 1 + filteredTrips.value.length) % filteredTrips.value.length
+}
+const showNextTrip = () => {
+    if (!filteredTrips.value.length) return
+    if (currentTripIndex.value === -1) currentTripIndex.value = 0
+    else currentTripIndex.value = (currentTripIndex.value + 1) % filteredTrips.value.length
+}
+const showAllTrips = () => {
+    currentTripIndex.value = -1
+    allDatesMode.value = true  // ✅ show everything again
+}
 
 // Load and process the data
 onMounted(async () => {
     try {
-        // Load data from may 11 to may 16, 2025
-        const responseDayOne = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-11_8-00_PST.json`)
-        const responseDayTwo = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-12_8-00_PST.json`)
-        const responseDayThree = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-13_8-00_PST.json`)
-        const responseDayFour = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-14_8-00_PST.json`)
-        const responseDayFive = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-15_8-00_PST.json`)
-        const responseDaySix = await fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-16_8-00_PST.json`)
-        const dataDayOne = await responseDayOne.json()
-        const dataDayTwo = await responseDayTwo.json()
-        const dataDayThree = await responseDayThree.json()
-        const dataDayFour = await responseDayFour.json()
-        const dataDayFive = await responseDayFive.json()
-        const dataDaySix = await responseDaySix.json()
-
-        // Convert the JSON object into an array
-        const dataArrayDayOne = safeToArray(dataDayOne)
-        const dataArrayDayTwo = safeToArray(dataDayTwo)
-        const dataArrayDayThree = safeToArray(dataDayThree)
-        const dataArrayDayFour = safeToArray(dataDayFour)
-        const dataArrayDayFive = safeToArray(dataDayFive)
-        const dataArrayDaySix = safeToArray(dataDaySix)
-
-        const combinedData = [ 
-            ...dataArrayDayOne,
-            ...dataArrayDayTwo,
-            ...dataArrayDayThree,
-            ...dataArrayDayFour,
-            ...dataArrayDayFive,
-            ...dataArrayDaySix
-        ];
+        // Load data from May 11 to May 16, 2025
+        const responses = await Promise.all([
+            fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-11_8-00_PST.json`),
+            fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-12_8-00_PST.json`),
+            fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-13_8-00_PST.json`),
+            fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-14_8-00_PST.json`),
+            fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-15_8-00_PST.json`),
+            fetch(`${import.meta.env.BASE_URL}data/gfts_realtime_data_2025-05-16_8-00_PST.json`),
+        ])
+        const jsonData = await Promise.all(responses.map(r => r.json()))
+        const combinedData = jsonData.flatMap(d => safeToArray(d))
 
         // Group data by trip_id, vehicle_id, and date into a 2D array
         const filteredData = Object.values(
             combinedData.reduce((acc, item) => {
                 if (item.route_id === "K" && item.direction_id === 1) {
                     const uniqueKey = item.trip_id + '_' + item.vehicle_id + '_' + item.date_pst
-                    if (!acc[uniqueKey]) {
-                        acc[uniqueKey] = []
-                    }
+                    if (!acc[uniqueKey]) acc[uniqueKey] = []
                     acc[uniqueKey].push(item)
                 }
                 return acc
@@ -78,7 +81,7 @@ onMounted(async () => {
 
             return trip.map((item, index, array) => {
                 if (index === 0 || arePointsWithin350Feet(item.latitude, item.longitude, startStationLatitude, startStationLongitude)) {
-                    return { cumulativeDistance: 0, cumulativeTime: 0 };
+                    return { cumulativeDistance: 0, cumulativeTime: 0, trip_id: item.trip_id, date_pst: item.date_pst };
                 }
 
                 const prev = array[index - 1];
@@ -97,17 +100,23 @@ onMounted(async () => {
                     cumulativeDistance,
                     cumulativeTime,
                     trip_id: item.trip_id,
+                    date_pst: item.date_pst,
                 };
             });
         });
 
         graphData.value = allProcessedTrips
+
+        // Collect unique dates
+        const dates = [...new Set(combinedData.map(d => d.date_pst))].sort()
+        availableDates.value = dates
+        selectedDate.value = dates[0] // default to first date
     } finally {
-        isLoading.value = false  // ✅ stop loading whether success or error
+        isLoading.value = false
     }
 })
 
-// Update the graph to use cumulative values
+// Update the graph
 watch(
     () => displayTrips.value,
     (allTrips) => {
@@ -176,21 +185,6 @@ watch(
     },
     { immediate: true }
 );
-
-// Handlers
-const showPrevTrip = () => {
-    if (!graphData.value.length) return
-    if (currentTripIndex.value === -1) currentTripIndex.value = 0
-    else currentTripIndex.value = (currentTripIndex.value - 1 + graphData.value.length) % graphData.value.length
-}
-const showNextTrip = () => {
-    if (!graphData.value.length) return
-    if (currentTripIndex.value === -1) currentTripIndex.value = 0
-    else currentTripIndex.value = (currentTripIndex.value + 1) % graphData.value.length
-}
-const showAllTrips = () => {
-    currentTripIndex.value = -1
-}
 </script>
 
 <template>
@@ -202,15 +196,29 @@ const showAllTrips = () => {
                         Tenco CityScale K Line Intersection Delays For Inbound K Line
                     </v-card-title>
                     <v-card-text>
+                        <!-- Date filter buttons -->
                         <div class="mb-4 flex gap-2">
-                            <v-btn color="primary" @click="showPrevTrip">Previous Trip</v-btn>
-                            <v-btn color="primary" @click="showNextTrip">Next Trip</v-btn>
-                            <v-btn color="secondary" @click="showAllTrips">Show All Trips</v-btn>
+                            <v-btn
+                                v-for="date in availableDates"
+                                class="mr-2"
+                                :key="date"
+                                :color="(!allDatesMode && date === selectedDate) ? 'primary' : 'secondary'"
+                                @click="selectedDate = date; currentTripIndex = -1; allDatesMode = false"
+                            >
+                                {{ date }}
+                            </v-btn>
+                        </div>
+
+                        <!-- Trip navigation -->
+                        <div class="mb-4 flex gap-2">
+                            <v-btn class="mr-2" color="primary" @click="showPrevTrip">Previous Trip</v-btn>
+                            <v-btn class="mr-2" color="primary" @click="showNextTrip">Next Trip</v-btn>
+                            <v-btn class="mr-2" color="secondary" @click="showAllTrips">Show All Trips</v-btn>
                             <span v-if="currentTripIndex >= 0">
-                                Showing Trip {{ currentTripIndex + 1 }} of {{ graphData.length }}
+                                Showing Trip {{ currentTripIndex + 1 }} of {{ filteredTrips.length }}
                             </span>
                             <span v-else>
-                                Showing All Trips ({{ graphData.length }})
+                                Showing {{ allDatesMode ? 'All Trips Across All Dates' : 'All Trips' }} ({{ filteredTrips.length }})
                             </span>
                         </div>
 
@@ -235,23 +243,3 @@ const showAllTrips = () => {
         </v-row>
     </v-container>
 </template>
-
-<style scoped>
-.v-btn {
-    margin-right: 12px;
-}
-.graph-container {
-    position: relative;
-}
-#loader {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 10;
-}
-</style>
