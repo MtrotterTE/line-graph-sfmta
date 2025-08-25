@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import * as d3 from 'd3'
-import { calculateDistance, calculateTimeElapsed, arePointsWithin350Feet, safeToArray } from '../utils/helpers.js'
+import { calculateDistance, calculateTimeElapsed, arePointsWithin350Feet, safeToArray, findNearestIndex } from '../utils/helpers.js'
 
 const graphData = ref([])
 const currentTripIndex = ref(-1)   // -1 means "show all trips"
@@ -41,6 +41,9 @@ const showAllTrips = () => {
     allDatesMode.value = true  // ✅ show everything again
 }
 
+// shape_id for inbound K line is 9495
+// shape_id for outbound K line is 9436
+
 // Load and process the data
 onMounted(async () => {
     try {
@@ -68,32 +71,49 @@ onMounted(async () => {
             }, {})
         )
 
+        // Load stops.json data
         const stopsResponse = await fetch(`${import.meta.env.BASE_URL}data/stops.json`)
         const stopsData = await stopsResponse.json()
         const stopsArray = Array.isArray(stopsData) ? stopsData : Object.values(stopsData)
 
+        // Lon and Lat of start station (San Jose and Geneva)
         const startStationLongitude = stopsArray[0].inbound.stops[0].location.longitude;
         const startStationLatitude = stopsArray[0].inbound.stops[0].location.latitude;
 
+        // Get the K line path coordinates
+        const kLinePath = stopsArray[0].polyline.shapeArray.map(point => ({
+            lat: point.shape_pt_lat,
+            lon: point.shape_pt_lon,
+            shape_dist_traveled: point.shape_dist_traveled
+        }));
+
+        console.log('Distance last two points:', calculateDistance(
+            kLinePath[kLinePath.length - 2].lat,
+            kLinePath[kLinePath.length - 2].lon,
+            kLinePath[kLinePath.length - 1].lat,
+            kLinePath[kLinePath.length - 1].lon
+        ));
+
+        // Process each trip to calculate cumulative distance and time
         const allProcessedTrips = filteredData.map((trip) => {
             let cumulativeDistance = 0;
             let cumulativeTime = 0;
 
             return trip.map((item, index, array) => {
+
+                // If within 350 feet of start station, vehicle is considered at start
                 if (index === 0 || arePointsWithin350Feet(item.latitude, item.longitude, startStationLatitude, startStationLongitude)) {
                     return { cumulativeDistance: 0, cumulativeTime: 0, trip_id: item.trip_id, date_pst: item.date_pst };
                 }
 
                 const prev = array[index - 1];
-                const distance = calculateDistance(
-                    prev.latitude,
-                    prev.longitude,
-                    item.latitude,
-                    item.longitude
-                );
                 const time = calculateTimeElapsed(prev.timestamp, item.timestamp);
 
-                cumulativeDistance += distance;
+                // Find nearest point on K line path
+                const currIdx = findNearestIndex(kLinePath, { lat: item.latitude, lon: item.longitude });
+
+                console.log('Current Index dist traveled:', kLinePath[currIdx]);
+                cumulativeDistance = kLinePath[currIdx].shape_dist_traveled;
                 cumulativeTime += time;
 
                 return {
@@ -181,7 +201,7 @@ watch(
             .attr('text-anchor', 'middle')
             .attr('font-size', '12px')
             .attr('transform', 'rotate(-90)')
-            .text('Cumulative Distance (meters)');
+            .text('Cumulative Distance (miles)');
     },
     { immediate: true }
 );

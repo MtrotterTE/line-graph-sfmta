@@ -42,6 +42,7 @@ function arePointsWithin350Feet(lat1, lon1, lat2, lon2) {
     return distanceInFeet <= 350; // Check if within 200 feet
 }
 
+// Safely convert JSON object to array
 function safeToArray(json) {
     if (Array.isArray(json)) return json
     if (json && typeof json === 'object') {
@@ -50,4 +51,33 @@ function safeToArray(json) {
     return []
 }
 
-export { calculateDistance, calculateTimeElapsed, arePointsWithin350Feet, safeToArray }
+function toRadians(deg) {
+    return deg * Math.PI / 180;
+}
+
+function haversine(lat1, lon1, lat2, lon2) {
+    const R = 6371000; // meters
+    const dLat = toRadians(lat2 - lat1);
+    const dLon = toRadians(lon2 - lon1);
+    const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
+        Math.sin(dLon / 2) ** 2;
+    return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
+// Find nearest vertex index on polyline
+function findNearestIndex(path, point) {
+    let minDist = Infinity;
+    let idx = 0;
+    path.forEach((p, i) => {
+      const d = haversine(p.lat, p.lon, point.lat, point.lon);
+      if (d < minDist) {
+        minDist = d;
+        idx = i;
+      }
+    });
+    return idx;
+  }
+
+export { calculateDistance, calculateTimeElapsed, arePointsWithin350Feet, safeToArray, findNearestIndex }
