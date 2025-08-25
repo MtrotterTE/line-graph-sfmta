@@ -8,7 +8,9 @@ const currentTripIndex = ref(-1)   // -1 means "show all trips"
 const isLoading = ref(true)
 const availableDates = ref([])
 const selectedDate = ref(null)
-const allDatesMode = ref(false)    // NEW: track whether all dates are shown
+const allDatesMode = ref(false)    // Track whether all dates are shown
+const westPortalStationIndex = ref(null) // Index of West Portal station in K line path
+const westPortalDistance = ref(null) // Distance of West Portal station along K line path
 
 // ✅ All trips in scope (date-filtered OR all dates)
 const filteredTrips = computed(() => {
@@ -87,12 +89,8 @@ onMounted(async () => {
             shape_dist_traveled: point.shape_dist_traveled
         }));
 
-        console.log('Distance last two points:', calculateDistance(
-            kLinePath[kLinePath.length - 2].lat,
-            kLinePath[kLinePath.length - 2].lon,
-            kLinePath[kLinePath.length - 1].lat,
-            kLinePath[kLinePath.length - 1].lon
-        ));
+        westPortalStationIndex.value = findNearestIndex(kLinePath, { lat: 37.741171, lon: -122.465609 })
+        westPortalDistance.value = kLinePath[westPortalStationIndex.value].shape_dist_traveled
 
         // Process each trip to calculate cumulative distance and time
         const allProcessedTrips = filteredData.map((trip) => {
@@ -106,13 +104,13 @@ onMounted(async () => {
                     return { cumulativeDistance: 0, cumulativeTime: 0, trip_id: item.trip_id, date_pst: item.date_pst };
                 }
 
+                // Calculate time elapsed since last point
                 const prev = array[index - 1];
                 const time = calculateTimeElapsed(prev.timestamp, item.timestamp);
 
                 // Find nearest point on K line path
                 const currIdx = findNearestIndex(kLinePath, { lat: item.latitude, lon: item.longitude });
 
-                console.log('Current Index dist traveled:', kLinePath[currIdx]);
                 cumulativeDistance = kLinePath[currIdx].shape_dist_traveled;
                 cumulativeTime += time;
 
@@ -162,6 +160,36 @@ watch(
         const line = d3.line()
             .x(d => x(d?.cumulativeTime))
             .y(d => y(d?.cumulativeDistance));
+
+        const maxYValue = d3.max(flatData, d => d?.cumulativeDistance);
+
+        // Add gray background rectangle for distances >= kLinePath[westPortalStationIndex].shape_dist_traveled
+        const thresholdDistance = westPortalDistance.value || 0; // Default to 0 if not found
+        svg.append('rect')
+            .attr('x', margin.left)
+            .attr('y', y(maxYValue))
+            .attr('width', width - margin.left - margin.right)
+            .attr('height', y(thresholdDistance) - y(maxYValue))
+            .attr('fill', 'lightgray')
+            .attr('opacity', 0.5);
+
+        // Add "Underground" label
+        svg.append('text')
+            .attr('x', width - margin.right - 10) // Right-aligned
+            .attr('y', (y(maxYValue) + y(thresholdDistance)) / 2) // Vertically centered on the gray background
+            .attr('text-anchor', 'end') // Align text to the end (right)
+            .attr('font-size', '14px')
+            .attr('fill', 'black')
+            .text('Underground');
+
+        // Add "Surface" label
+        svg.append('text')
+            .attr('x', width - margin.right - 10) // Right-aligned
+            .attr('y', (y(thresholdDistance) + y(0)) / 2) // Vertically centered on the rest of the graph
+            .attr('text-anchor', 'end') // Align text to the start (left)
+            .attr('font-size', '14px')
+            .attr('fill', 'black')
+            .text('Surface');
 
         svg.append('g')
             .attr('transform', `translate(0,${height - margin.bottom})`)
