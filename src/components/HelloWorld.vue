@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import * as d3 from 'd3'
-import { calculateDistance, calculateTimeElapsed, arePointsWithin350Feet, safeToArray, findNearestIndex } from '../utils/helpers.js'
+import { calculateTimeElapsed, arePointsWithin350Feet, safeToArray, findNearestIndex } from '../utils/helpers.js'
 
 const graphData = ref([])
 const currentTripIndex = ref(-1)   // -1 means "show all trips"
@@ -11,6 +11,7 @@ const selectedDate = ref(null)
 const allDatesMode = ref(false)    // Track whether all dates are shown
 const westPortalStationIndex = ref(null) // Index of West Portal station in K line path
 const westPortalDistance = ref(null) // Distance of West Portal station along K line path
+const stationDistances = ref([]) // Distances of all stations along K line path
 
 // ✅ All trips in scope (date-filtered OR all dates)
 const filteredTrips = computed(() => {
@@ -89,8 +90,21 @@ onMounted(async () => {
             shape_dist_traveled: point.shape_dist_traveled
         }));
 
+        // Find and store the index and distance of West Portal station
         westPortalStationIndex.value = findNearestIndex(kLinePath, { lat: 37.741171, lon: -122.465609 })
         westPortalDistance.value = kLinePath[westPortalStationIndex.value].shape_dist_traveled
+
+        // Store distances of all stations along K line path
+        stationDistances.value = stopsArray[0].inbound.stops.map(stop => {
+            const idx = findNearestIndex(kLinePath, { lat: stop.location.latitude, lon: stop.location.longitude })
+            return {
+                cumulativeDistance: kLinePath[idx].shape_dist_traveled,
+                stop_id: stop.stop_id,
+                stop_name: stop.stop_name
+            };
+        })
+
+        console.log("Station Distances:", stationDistances.value);
 
         // Process each trip to calculate cumulative distance and time
         const allProcessedTrips = filteredData.map((trip) => {
@@ -145,7 +159,7 @@ watch(
 
         const width = 1100;
         const height = window.innerHeight * 0.8;
-        const margin = { top: 20, right: 30, bottom: 50, left: 60 };
+        const margin = { top: 20, right: 30, bottom: 50, left: 200 };
 
         const flatData = allTrips.flat();
 
@@ -230,6 +244,54 @@ watch(
             .attr('font-size', '12px')
             .attr('transform', 'rotate(-90)')
             .text('Cumulative Distance (miles)');
+
+        // Add horizontal lines and labels for station distances
+        stationDistances.value.forEach(entry => {
+            const yPosition = y(entry.cumulativeDistance);
+
+            // Add the actual horizontal line
+            const line = svg.append('line')
+                .attr('x1', margin.left)
+                .attr('x2', width - margin.right)
+                .attr('y1', yPosition)
+                .attr('y2', yPosition)
+                .attr('stroke', 'gray')
+                .attr('stroke-dasharray', '4,4')
+                .attr('class', 'station-line');
+
+            // Add an invisible line for easier hover detection
+            svg.append('line')
+                .attr('x1', margin.left)
+                .attr('x2', width - margin.right)
+                .attr('y1', yPosition)
+                .attr('y2', yPosition)
+                .attr('stroke', 'transparent') // Invisible line
+                .attr('stroke-width', 10) // Wider hover area
+                .on('mouseover', function () {
+                    line.attr('stroke-dasharray', null) // Remove dashed style
+                        .attr('stroke-width', 2); // Make the line thicker
+
+                    d3.select(`#label-${entry.stop_id}`)
+                        .attr('font-weight', 'bold'); // Bold the corresponding label
+                })
+                .on('mouseout', function () {
+                    line.attr('stroke-dasharray', '4,4') // Restore dashed style
+                        .attr('stroke-width', 1); // Restore original width
+
+                    d3.select(`#label-${entry.stop_id}`)
+                        .attr('font-weight', 'normal'); // Restore normal font weight
+                });
+
+            // Add label
+            svg.append('text')
+                .attr('id', `label-${entry.stop_id}`) // Add an ID for easier selection
+                .attr('x', margin.left - 10) // Position to the left of the graph
+                .attr('y', yPosition - 5) // Slightly above the line
+                .attr('text-anchor', 'end') // Align text to the end (right)
+                .attr('font-size', '10px')
+                .attr('fill', 'black')
+                .text(entry.stop_name);
+        });
     },
     { immediate: true }
 );
