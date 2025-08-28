@@ -12,6 +12,7 @@ const allDatesMode = ref(false)    // Track whether all dates are shown
 const westPortalStationIndex = ref(null) // Index of West Portal station in K line path
 const westPortalDistance = ref(null) // Distance of West Portal station along K line path
 const stationDistances = ref([]) // Distances of all stations along K line path
+const intersectionDistances = ref([]) // Distances of intersections along K line path
 
 // ✅ All trips in scope (date-filtered OR all dates)
 const filteredTrips = computed(() => {
@@ -100,11 +101,20 @@ onMounted(async () => {
             return {
                 cumulativeDistance: kLinePath[idx].shape_dist_traveled,
                 stop_id: stop.stop_id,
-                stop_name: stop.stop_name
+                stop_name: stop.stop_name,
+                k_line_index: idx
             };
         })
 
-        console.log("Station Distances:", stationDistances.value);
+        // Store distances of intersections along K line path
+        intersectionDistances.value = stopsArray[0].intersections.stops.map(intersection => {
+            const idx = findNearestIndex(kLinePath, { lat: intersection.location.latitude, lon: intersection.location.longitude })
+            return {
+                cumulativeDistance: kLinePath[idx].shape_dist_traveled,
+                intersection_name: intersection.stop_name,
+                k_line_index: idx
+            };
+        })
 
         // Process each trip to calculate cumulative distance and time
         const allProcessedTrips = filteredData.map((trip) => {
@@ -159,7 +169,7 @@ watch(
 
         const width = 1100;
         const height = window.innerHeight * 0.8;
-        const margin = { top: 20, right: 30, bottom: 50, left: 200 };
+        const margin = { top: 20, right: 140, bottom: 50, left: 200 };
 
         const flatData = allTrips.flat();
 
@@ -186,24 +196,6 @@ watch(
             .attr('height', y(thresholdDistance) - y(maxYValue))
             .attr('fill', 'lightgray')
             .attr('opacity', 0.5);
-
-        // Add "Underground" label
-        svg.append('text')
-            .attr('x', width - margin.right - 10) // Right-aligned
-            .attr('y', (y(maxYValue) + y(thresholdDistance)) / 2) // Vertically centered on the gray background
-            .attr('text-anchor', 'end') // Align text to the end (right)
-            .attr('font-size', '14px')
-            .attr('fill', 'black')
-            .text('Underground');
-
-        // Add "Surface" label
-        svg.append('text')
-            .attr('x', width - margin.right - 10) // Right-aligned
-            .attr('y', (y(thresholdDistance) + y(0)) / 2) // Vertically centered on the rest of the graph
-            .attr('text-anchor', 'end') // Align text to the start (left)
-            .attr('font-size', '14px')
-            .attr('fill', 'black')
-            .text('Surface');
 
         svg.append('g')
             .attr('transform', `translate(0,${height - margin.bottom})`)
@@ -271,27 +263,135 @@ watch(
                     line.attr('stroke-dasharray', null) // Remove dashed style
                         .attr('stroke-width', 2); // Make the line thicker
 
-                    d3.select(`#label-${entry.stop_id}`)
+                    d3.select(`#label-${entry.k_line_index}`)
                         .attr('font-weight', 'bold'); // Bold the corresponding label
                 })
                 .on('mouseout', function () {
                     line.attr('stroke-dasharray', '4,4') // Restore dashed style
                         .attr('stroke-width', 1); // Restore original width
 
-                    d3.select(`#label-${entry.stop_id}`)
+                    d3.select(`#label-${entry.k_line_index}`)
                         .attr('font-weight', 'normal'); // Restore normal font weight
                 });
 
             // Add label
             svg.append('text')
-                .attr('id', `label-${entry.stop_id}`) // Add an ID for easier selection
-                .attr('x', margin.left - 10) // Position to the left of the graph
-                .attr('y', yPosition - 5) // Slightly above the line
+                .attr('id', `label-${entry.k_line_index}`) // Add an ID for easier selection
+                .attr('x', margin.left - 20) // Position to the left of the graph
+                .attr('y', yPosition + 3) // Slightly above the line
                 .attr('text-anchor', 'end') // Align text to the end (right)
                 .attr('font-size', '10px')
                 .attr('fill', 'black')
                 .text(entry.stop_name);
         });
+
+        // Add horizontal lines and labels for intersection distances
+        intersectionDistances.value.forEach(entry => {
+            const yPosition = y(entry.cumulativeDistance);
+
+            // Add the actual horizontal line
+            const line = svg.append('line')
+                .attr('x1', margin.left)
+                .attr('x2', width - margin.right)
+                .attr('y1', yPosition)
+                .attr('y2', yPosition)
+                .attr('stroke', 'blue')
+                .attr('stroke-dasharray', '4,4')
+                .attr('class', 'intersection-line');
+
+            // Add an invisible line for easier hover detection
+            svg.append('line')
+                .attr('x1', margin.left)
+                .attr('x2', width - margin.right)
+                .attr('y1', yPosition)
+                .attr('y2', yPosition)
+                .attr('stroke', 'transparent') // Invisible line
+                .attr('stroke-width', 10) // Wider hover area
+                .on('mouseover', function () {
+                    line.attr('stroke-dasharray', null) // Remove dashed style
+                        .attr('stroke-width', 2); // Make the line thicker
+
+                    d3.select(`#label-intersection-${entry.k_line_index}`)
+                        .attr('font-weight', 'bold'); // Bold the corresponding label
+                })
+                .on('mouseout', function () {
+                    line.attr('stroke-dasharray', '4,4') // Restore dashed style
+                        .attr('stroke-width', 1); // Restore original width
+
+                    d3.select(`#label-intersection-${entry.k_line_index}`)
+                        .attr('font-weight', 'normal'); // Restore normal font weight
+                });
+
+            // Add label
+            svg.append('text')
+                .attr('id', `label-intersection-${entry.k_line_index}`) // Add an ID for easier selection
+                .attr('x', width - margin.right + 6) // Position to the right of the graph
+                .attr('y', yPosition + 3) // Slightly above the line
+                .attr('text-anchor', 'start') // Align text to the start (left)
+                .attr('font-size', '10px')
+                .attr('fill', 'blue')
+                .text(entry.intersection_name);
+        });
+
+        // Add "Intersections" label
+        svg.append('text')
+            .attr('id', `label-intersection`) // Add an ID for easier selection
+            .attr('x', width - margin.right + 6) // Position to the right of the graph
+            .attr('y', 
+                (2.7 < maxYValue ? y(2.7) - 10 : y(maxYValue) - 10)
+            ) // Above last intersection line
+            .attr('text-anchor', 'start') // Align text to the start (left)
+            .attr('font-size', '13px')
+            .attr('fill', 'blue')
+            .attr('font-weight', 'bold')
+            .attr('style', 'text-decoration: underline;')
+            .text("Intersections");
+
+        // Add "Stations" label
+        svg.append('text')
+            .attr('id', `label-stations`) // Add an ID for easier selection
+            .attr('x', margin.left - 20) // Position to the left of the graph
+            .attr('y', y(maxYValue) - 10) // Above last station line
+            .attr('text-anchor', 'end') // Align text to the end (right)
+            .attr('font-size', '13px')
+            .attr('fill', 'gray')
+            .attr('font-weight', 'bold')
+            .attr('style', 'text-decoration: underline;')
+            .text("Stations");
+
+        // Add "Underground" label with background
+        svg.append('rect')
+            .attr('x', width - margin.right - 110) // Adjust position to align with text
+            .attr('y', (y(maxYValue) + y(thresholdDistance)) / 2 - 10) // Center vertically and adjust for text height
+            .attr('width', 100) // Width of the background rectangle
+            .attr('height', 20) // Height of the background rectangle
+            .attr('fill', 'black')
+            .attr('opacity', 0.6);
+
+        svg.append('text')
+            .attr('x', width - margin.right - 16) // Right-aligned
+            .attr('y', (y(maxYValue) + y(thresholdDistance)) / 2 + 5) // Vertically centered on the gray background
+            .attr('text-anchor', 'end') // Align text to the end (right)
+            .attr('font-size', '14px')
+            .attr('fill', 'white') // Text color to contrast with the black background
+            .text('Underground');
+
+        // Add "Surface" label with background
+        svg.append('rect')
+            .attr('x', width - margin.right - 76) // Adjust position to align with text
+            .attr('y', (y(thresholdDistance) + y(0)) / 2 - 10) // Center vertically and adjust for text height
+            .attr('width', 66) // Width of the background rectangle
+            .attr('height', 20) // Height of the background rectangle
+            .attr('fill', 'black')
+            .attr('opacity', 0.6);
+
+        svg.append('text')
+            .attr('x', width - margin.right - 16) // Right-aligned
+            .attr('y', (y(thresholdDistance) + y(0)) / 2 + 5) // Vertically centered on the rest of the graph
+            .attr('text-anchor', 'end') // Align text to the end (right)
+            .attr('font-size', '14px')
+            .attr('fill', 'white') // Text color to contrast with the black background
+            .text('Surface');
     },
     { immediate: true }
 );
@@ -333,7 +433,7 @@ watch(
                         </div>
 
                         <!-- Graph container with loader overlay -->
-                        <div class="graph-container relative" style="width:1100px; height:80vh;">
+                        <div class="graph-container relative" style="height:800px;">
                             <div
                                 v-if="isLoading"
                                 id="loader"
@@ -345,7 +445,7 @@ watch(
                                     size="64"
                                 />
                             </div>
-                            <svg id="line-graph" width="1100" height="100%"></svg>
+                            <svg id="line-graph" width="1200" height="100%"></svg>
                         </div>
                     </v-card-text>
                 </v-card>
