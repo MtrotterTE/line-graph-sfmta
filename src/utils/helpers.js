@@ -95,4 +95,4 @@ function isWithinDistance(lat1, lon1, lat2, lon2, distanceInFeet = 500) {
     return distance <= distanceInFeet;
 }
 
-export { calculateTimeElapsed, arePointsWithin350Feet, safeToArray, findNearestIndex, isWithinDistance }
+export { calculateTimeElapsed, arePointsWithin350Feet, safeToArray, findNearestIndex, isWithinDistance, getDistanceInFeet };
