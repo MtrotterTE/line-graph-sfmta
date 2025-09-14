@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import * as d3 from 'd3'
-import { calculateTimeElapsed, arePointsWithin350Feet, safeToArray, findNearestIndex } from '../utils/helpers.js'
+import { calculateTimeElapsed, arePointsWithin350Feet, safeToArray, findNearestIndex, isWithinDistance } from '../utils/helpers.js'
 
 const graphData = ref([])
 const currentTripIndex = ref(-1)   // -1 means "show all trips"
@@ -13,6 +13,7 @@ const westPortalStationIndex = ref(null) // Index of West Portal station in K li
 const westPortalDistance = ref(null) // Distance of West Portal station along K line path
 const stationDistances = ref([]) // Distances of all stations along K line path
 const intersectionDistances = ref([]) // Distances of intersections along K line path
+const locations = ref([]); // Locations of stops and intersections
 
 // ✅ All trips in scope (date-filtered OR all dates)
 const filteredTrips = computed(() => {
@@ -80,6 +81,38 @@ onMounted(async () => {
         const stopsData = await stopsResponse.json()
         const stopsArray = Array.isArray(stopsData) ? stopsData : Object.values(stopsData)
 
+        // Simplified check for vehicle at a station or intersection
+        locations.value = [
+            { name: "San Jose & Geneva Ave", location: stopsArray[0].inbound.stops[0].location },
+            { name: "San Jose Ave & Santa Ynez Ave", location: stopsArray[0].intersections.stops[7].location },
+            { name: "Ocean Ave & Balboa Park", location: stopsArray[0].intersections.stops[3].location },
+            { name: "Howlth St & Ocean Ave", location: stopsArray[0].intersections.stops[1].location },
+            { name: "Ocean Ave/CCSF Pedestrian Bridge", location: stopsArray[0].inbound.stops[1].location },
+            { name: "Ocean Ave & Lee St", location: stopsArray[0].inbound.stops[2].location },
+            { name: "Ocean Ave & Plymouth Ave", location: stopsArray[0].intersections.stops[4].location },
+            { name: "Ocean Ave & Miramar Ave", location: stopsArray[0].inbound.stops[3].location },
+            { name: "Ocean Ave & Dorado Ter", location: stopsArray[0].inbound.stops[4].location },
+            { name: "Ocean Ave & Fairfield Way", location: stopsArray[0].inbound.stops[5].location },
+            { name: "Ocean Ave & Cerritos Ave", location: stopsArray[0].intersections.stops[5].location },
+            { name: "Ocean Ave & Aptos Ave", location: stopsArray[0].inbound.stops[6].location },
+            { name: "Ocean Ave & San Leandro Way", location: stopsArray[0].inbound.stops[7].location },
+            { name: "Junipero Serra Blvd & Ocean Ave", location: stopsArray[0].inbound.stops[8].location },
+            { name: "Junipero Serra Blvd & Monterey Blvd", location: stopsArray[0].intersections.stops[0].location },
+            { name: "West Portal Ave & Sloat Blvd", location: stopsArray[0].inbound.stops[9].location },
+            { name: "West Portal Ave & 15th Ave", location: stopsArray[0].intersections.stops[6].location },
+            { name: "West Portal Ave & 14th Ave", location: stopsArray[0].inbound.stops[10].location },
+            { name: "West Portal Ave & Vicente St", location: stopsArray[0].intersections.stops[2].location },
+            { name: "West Portal Station", location: stopsArray[0].inbound.stops[11].location },
+            { name: "Forest Hill Station", location: stopsArray[0].inbound.stops[12].location },
+            { name: "Castro Station", location: stopsArray[0].inbound.stops[13].location },
+            { name: "Church Station", location: stopsArray[0].inbound.stops[14].location },
+            { name: "Van Ness Station", location: stopsArray[0].inbound.stops[15].location },
+            { name: "Civic Center Station", location: stopsArray[0].inbound.stops[16].location },
+            { name: "Powell Station", location: stopsArray[0].inbound.stops[17].location },
+            { name: "Montgomery Station", location: stopsArray[0].inbound.stops[18].location },
+            { name: "Embarcadero Station", location: stopsArray[0].inbound.stops[19].location },
+        ];
+
         // Lon and Lat of start station (San Jose and Geneva)
         const startStationLongitude = stopsArray[0].inbound.stops[0].location.longitude;
         const startStationLatitude = stopsArray[0].inbound.stops[0].location.latitude;
@@ -91,7 +124,7 @@ onMounted(async () => {
             shape_dist_traveled: point.shape_dist_traveled
         }));
 
-        // Find and store the index and distance of West Portal station
+        // Find and store the index and distance of West Portal station for drawing the underground background
         westPortalStationIndex.value = findNearestIndex(kLinePath, { lat: 37.741171, lon: -122.465609 })
         westPortalDistance.value = kLinePath[westPortalStationIndex.value].shape_dist_traveled
 
@@ -122,7 +155,6 @@ onMounted(async () => {
             let cumulativeTime = 0;
 
             return trip.map((item, index, array) => {
-
                 // If within 350 feet of start station, vehicle is considered at start
                 if (index === 0 || arePointsWithin350Feet(item.latitude, item.longitude, startStationLatitude, startStationLongitude)) {
                     return { cumulativeDistance: 0, cumulativeTime: 0, trip_id: item.trip_id, date_pst: item.date_pst };
@@ -143,6 +175,8 @@ onMounted(async () => {
                     cumulativeTime,
                     trip_id: item.trip_id,
                     date_pst: item.date_pst,
+                    latitude: item.latitude,
+                    longitude: item.longitude,
                 };
             });
         });
@@ -213,7 +247,22 @@ watch(
 
         const color = d3.scaleOrdinal(d3.schemeCategory10);
 
+        const vehicleAtStopRadiusFeet = 250; // 250 feet radius to consider vehicle at stop
+
         allTrips.forEach((trip, i) => {
+            console.log("Trip:", trip);
+            console.log("Against trip point:", trip.latitude, trip.longitude)
+
+            trip.forEach((point) => {
+                const locationMatch = locations.value.find(({ location }) =>
+                    isWithinDistance(point.latitude, point.longitude, location.latitude, location.longitude, vehicleAtStopRadiusFeet)
+                );
+
+                if (locationMatch) {
+                    console.log(`Vehicle is at: ${locationMatch.name}`);
+                }
+            });
+
             svg.append('path')
                 .datum(trip)
                 .attr('fill', 'none')
@@ -227,7 +276,7 @@ watch(
             .attr('y', height - 10)
             .attr('text-anchor', 'middle')
             .attr('font-size', '12px')
-            .text('Cumulative Time (seconds)');
+            .text('Time (seconds)');
 
         svg.append('text')
             .attr('x', -(height / 2))
@@ -235,7 +284,7 @@ watch(
             .attr('text-anchor', 'middle')
             .attr('font-size', '12px')
             .attr('transform', 'rotate(-90)')
-            .text('Cumulative Distance (miles)');
+            .text('Distance (miles)');
 
         // Add horizontal lines and labels for station distances
         stationDistances.value.forEach(entry => {
