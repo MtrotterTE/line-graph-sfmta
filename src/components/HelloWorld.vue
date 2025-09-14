@@ -84,7 +84,6 @@ onMounted(async () => {
         // Simplified check for vehicle at a station or intersection
         locations.value = [
             { name: "San Jose & Geneva Ave", location: stopsArray[0].inbound.stops[0].location },
-            { name: "San Jose Ave & Santa Ynez Ave", location: stopsArray[0].intersections.stops[7].location },
             { name: "Ocean Ave & Balboa Park", location: stopsArray[0].intersections.stops[3].location },
             { name: "Howlth St & Ocean Ave", location: stopsArray[0].intersections.stops[1].location },
             { name: "Ocean Ave/CCSF Pedestrian Bridge", location: stopsArray[0].inbound.stops[1].location },
