@@ -202,7 +202,7 @@ watch(
         svg.selectAll('*').remove();
 
         const width = 1100;
-        const height = window.innerHeight * 0.8;
+        const height = 760;
         const margin = { top: 20, right: 140, bottom: 50, left: 200 };
 
         const flatData = allTrips.flat();
@@ -287,8 +287,6 @@ watch(
                 lastPoint = point;
             });
 
-            console.log("locations.value", locations.value);
-
             svg.append('path')
                 .datum(trip)
                 .attr('fill', 'none')
@@ -296,6 +294,8 @@ watch(
                 .attr('stroke-width', 1.5)
                 .attr('d', line);
         });
+
+        console.log("locations.value", locations.value);
 
         svg.append('text')
             .attr('x', width / 2)
@@ -486,29 +486,31 @@ watch(
                             <v-btn
                                 v-for="date in availableDates"
                                 class="mr-2"
+                                size="small"
                                 :key="date"
                                 :color="(!allDatesMode && date === selectedDate) ? 'primary' : 'secondary'"
                                 @click="selectedDate = date; currentTripIndex = -1; allDatesMode = false"
                             >
-                                {{ date }}
+                                {{ date.substring(0, 5) }}
                             </v-btn>
-                        </div>
-
-                        <!-- Trip navigation -->
-                        <div class="mb-4 flex gap-2">
-                            <v-btn class="mr-2" color="primary" @click="showPrevTrip">Previous Trip</v-btn>
-                            <v-btn class="mr-2" color="primary" @click="showNextTrip">Next Trip</v-btn>
-                            <v-btn class="mr-2" color="secondary" @click="showAllTrips">Show All Trips</v-btn>
+                            <v-btn class="mr-2" size="small" color="prev" @click="showPrevTrip">Previous Trip</v-btn>
+                            <v-btn class="mr-2" size="small" color="next" @click="showNextTrip">Next Trip</v-btn>
+                            <v-btn class="mr-2" size="small" color="all" @click="showAllTrips">Show All Trips</v-btn>
                             <span v-if="currentTripIndex >= 0">
                                 Showing Trip {{ currentTripIndex + 1 }} of {{ filteredTrips.length }}
                             </span>
                             <span v-else>
-                                Showing {{ allDatesMode ? 'All Trips Across All Dates' : 'All Trips' }} ({{ filteredTrips.length }})
+                                Showing {{ allDatesMode ? 'All Trips For All Dates' : 'All Trips' }} ({{ filteredTrips.length }})
                             </span>
                         </div>
 
+                        <!-- Trip navigation -->
+                        <div class="mb-4 flex gap-2">
+                
+                        </div>
+
                         <!-- Graph container with loader overlay -->
-                        <div class="graph-container relative" style="height:800px;">
+                        <div class="graph-container relative" style="height:760px;">
                             <div
                                 v-if="isLoading"
                                 id="loader"
@@ -528,3 +530,30 @@ watch(
         </v-row>
     </v-container>
 </template>
+
+<style>
+
+.v-container {
+    padding: 0;
+}
+
+div.v-card-title {
+    padding-bottom: 1rem;
+}
+
+.v-card-text div span {
+    display: inline-block;
+    max-width: 10rem;
+}
+
+.v-card-text > div:first-of-type {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+div.v-col {
+    padding: 0;
+}
+
+</style>
