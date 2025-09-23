@@ -216,6 +216,14 @@ watch(
         const svg = d3.select('#line-graph');
         svg.selectAll('*').remove();
 
+        const container = d3.select('.graph-container');
+        let tooltip = container.select('.graph-tooltip');
+        if (tooltip.empty()) {
+            tooltip = container.append('div')
+                .attr('class', 'graph-tooltip');
+        }
+        tooltip.style('opacity', 0);
+
         const width = 1100;
         const height = 760;
         const margin = { top: 20, right: 140, bottom: 50, left: 200 };
@@ -358,12 +366,27 @@ watch(
                 .attr('y2', yPosition)
                 .attr('stroke', 'transparent') // Invisible line
                 .attr('stroke-width', 10) // Wider hover area
-                .on('mouseover', function () {
+                .on('mouseover', function (event) {
                     line.attr('stroke-dasharray', null) // Remove dashed style
                         .attr('stroke-width', 2); // Make the line thicker
 
                     d3.select(`#label-${entry.k_line_index}`)
                         .attr('font-weight', 'bold'); // Bold the corresponding label
+
+                    const locationInfo = locations.value.find(loc => loc.name === entry.stop_name);
+                    if (!locationInfo) return;
+
+                    const [xPos, yPos] = d3.pointer(event, container.node());
+                    tooltip
+                        .style('opacity', 1)
+                        .style('left', `${xPos + 16}px`)
+                        .style('top', `${yPos - 20}px`)
+                        .html(`
+                            <div><strong>${entry.stop_name}</strong></div>
+                            <div>Vehicles: ${locationInfo.numVehicles}</div>
+                            <div>Time at stop: ${locationInfo.timeAtStop.toFixed(1)}s</div>
+                            <div>Average stop duration: ${(locationInfo.timeAtStop / locationInfo.numVehicles).toFixed(1)}s</div>
+                        `.trim());
                 })
                 .on('mouseout', function () {
                     line.attr('stroke-dasharray', '4,4') // Restore dashed style
@@ -371,6 +394,8 @@ watch(
 
                     d3.select(`#label-${entry.k_line_index}`)
                         .attr('font-weight', 'normal'); // Restore normal font weight
+
+                    tooltip.style('opacity', 0);
                 });
 
             // Add label
@@ -406,12 +431,27 @@ watch(
                 .attr('y2', yPosition)
                 .attr('stroke', 'transparent') // Invisible line
                 .attr('stroke-width', 10) // Wider hover area
-                .on('mouseover', function () {
+                .on('mouseover', function (event) {
                     line.attr('stroke-dasharray', null) // Remove dashed style
                         .attr('stroke-width', 2); // Make the line thicker
 
                     d3.select(`#label-intersection-${entry.k_line_index}`)
                         .attr('font-weight', 'bold'); // Bold the corresponding label
+
+                    const locationInfo = locations.value.find(loc => loc.name === entry.intersection_name);
+                    if (!locationInfo) return;
+
+                    const [xPos, yPos] = d3.pointer(event, container.node());
+                    tooltip
+                        .style('opacity', 1)
+                        .style('left', `${xPos + 16}px`)
+                        .style('top', `${yPos - 20}px`)
+                        .html(`
+                            <div><strong>${entry.intersection_name}</strong></div>
+                            <div>Vehicles: ${locationInfo.numVehicles}</div>
+                            <div>Time at stop: ${locationInfo.timeAtStop.toFixed(1)}s</div>
+                            <div>Average stop duration: ${(locationInfo.timeAtStop / locationInfo.numVehicles).toFixed(1)}s</div>
+                        `.trim());
                 })
                 .on('mouseout', function () {
                     line.attr('stroke-dasharray', '4,4') // Restore dashed style
@@ -419,6 +459,8 @@ watch(
 
                     d3.select(`#label-intersection-${entry.k_line_index}`)
                         .attr('font-weight', 'normal'); // Restore normal font weight
+
+                    tooltip.style('opacity', 0);
                 });
 
             // Add label
@@ -558,10 +600,14 @@ watch(
         <!-- Right Rail -->
         <div class="rail pa-4">
             <div class="totals-wrapper">
-                <h4>Total time at intersections</h4>
-                <p>{{ totalTimeAtIntersections }} (seconds)</p>
-                <h4>Average intersection duration</h4>
-                <p>{{ (totalTimeAtIntersections / totalNumVehiclesAtIntersections).toFixed(2) }} (seconds)</p>
+                <div class="summary-box">
+                    <h4>Total time at intersections</h4>
+                    <p>{{ totalTimeAtIntersections }} (seconds)</p>
+                </div>
+                <div class="summary-box">
+                    <h4>Average intersection duration</h4>
+                    <p>{{ (totalTimeAtIntersections / totalNumVehiclesAtIntersections).toFixed(2) }} (seconds)</p>
+                </div>
             </div>
         </div>
     </div>
@@ -590,6 +636,49 @@ div.v-card-title {
 
 div.v-col {
     padding: 0;
+}
+
+.graph-container {
+    position: relative;
+}
+
+.graph-tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(0, 0, 0, 0.8);
+    color: #fff;
+    padding: 0.35rem 0.5rem;
+    border-radius: 4px;
+    font-size: 12px;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.graph-tooltip strong {
+    display: block;
+    margin-bottom: 0.15rem;
+}
+
+.rail {
+    background-color: #fff;
+    color: #010101;
+    margin: 4px 4px 4px 0;
+    border-radius: 4px;
+}
+
+.totals-wrapper {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-end;
+}
+
+.summary-box {
+    margin-bottom: 32px;
+    padding: 8px;
+    border-radius: 3px;
+    border: 1px solid #010101;
 }
 
 </style>
