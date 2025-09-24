@@ -3,27 +3,6 @@ function calculateTimeElapsed(timestamp1, timestamp2) {
     return (new Date(timestamp2) - new Date(timestamp1)) / 1000 // Time in seconds
 }
 
-// Helper function to check if two points are within 200 feet of each other
-function arePointsWithin350Feet(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // Earth's radius in meters
-    const toRadians = (deg) => (deg * Math.PI) / 180;
-
-    const φ1 = toRadians(lat1);
-    const φ2 = toRadians(lat2);
-    const Δφ = toRadians(lat2 - lat1);
-    const Δλ = toRadians(lon2 - lon1);
-
-    const a =
-        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    const distanceInMeters = R * c; // Distance in meters
-    const distanceInFeet = distanceInMeters * 3.28084; // Convert meters to feet
-
-    return distanceInFeet <= 350; // Check if within 200 feet
-}
-
 // Safely convert JSON object to array
 function safeToArray(json) {
     if (Array.isArray(json)) return json
@@ -95,4 +74,4 @@ function isWithinDistance(lat1, lon1, lat2, lon2, distanceInFeet = 500) {
     return distance <= distanceInFeet;
 }
 
-export { calculateTimeElapsed, arePointsWithin350Feet, safeToArray, findNearestIndex, isWithinDistance, getDistanceInFeet };
+export { calculateTimeElapsed, safeToArray, findNearestIndex, isWithinDistance, getDistanceInFeet };

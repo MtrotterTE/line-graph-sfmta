@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, watch, computed } from 'vue'
 import * as d3 from 'd3'
-import { calculateTimeElapsed, arePointsWithin350Feet, safeToArray, findNearestIndex, isWithinDistance, getDistanceInFeet } from '../utils/helpers.js'
+import { calculateTimeElapsed, safeToArray, findNearestIndex, isWithinDistance, getDistanceInFeet } from '../utils/helpers.js'
 
 const graphData = ref([])
 const currentTripIndex = ref(-1)   // -1 means "show all trips"
@@ -14,6 +14,7 @@ const westPortalDistance = ref(null) // Distance of West Portal station along K 
 const stationDistances = ref([]) // Distances of all stations along K line path
 const intersectionDistances = ref([]) // Distances of intersections along K line path
 const locations = ref([]); // Locations of stops and intersections
+const vehicleAtStopRadiusFeet = ref(250); // 250 feet radius to consider vehicle at stop
 
 // ✅ All trips in scope (date-filtered OR all dates)
 const filteredTrips = computed(() => {
@@ -169,7 +170,7 @@ onMounted(async () => {
 
             return trip.map((item, index, array) => {
                 // If within 350 feet of start station, vehicle is considered at start
-                if (index === 0 || arePointsWithin350Feet(item.latitude, item.longitude, startStationLatitude, startStationLongitude)) {
+                if (index === 0 || isWithinDistance(item.latitude, item.longitude, startStationLatitude, startStationLongitude, 350)) {
                     return { cumulativeDistance: 0, cumulativeTime: 0, trip_id: item.trip_id, date_pst: item.date_pst, latitude: item.latitude, longitude: item.longitude, speed: item.speed, vehicle_id: item.vehicle_id};
                 }
 
@@ -276,17 +277,17 @@ watch(
             location.numVehicles = 0;
         });
 
-        const vehicleAtStopRadiusFeet = 250; // 250 feet radius to consider vehicle at stop
-
+        // Cycle through each individual trip, check if vehicle is at location, and draw svg path
         allTrips.forEach((trip, i) => {
-            let lastStop = null;
-            let lastPoint = null;
-            let alreadyVisitedLocations = [];
+            let lastStop = null; // previous location match in this trip
+            let lastPoint = null; // previous point in this trip
+            let alreadyVisitedLocations = []; // array or already visited locations
+            let leavingFirstTerminalStation = null; // point where the vehicle first leaves the terminal station starting the trip
 
             // Check each point in the trip against all locations to see where the vehicle is stopped
             trip.forEach((point) => {
                 const locationMatch = locations.value.find(({ location }) =>
-                    isWithinDistance(point.latitude, point.longitude, location.latitude, location.longitude, vehicleAtStopRadiusFeet)
+                    isWithinDistance(point.latitude, point.longitude, location.latitude, location.longitude, vehicleAtStopRadiusFeet.value)
                 );
 
                 // If vehicle is at a location
@@ -297,6 +298,12 @@ watch(
                     if (!seen) {
                         alreadyVisitedLocations.push(locationMatch);
                         locationMatch.numVehicles += 1; // Increment vehicle count for this location
+                    }
+
+                    // If vehicle is at starting terminal station, set leavingFirstTerminalStation to signify start of trip
+                    if (locationMatch.name === "San Jose & Geneva Ave") {
+                        console.log("setting leavingFirstTerminalStation");
+                        leavingFirstTerminalStation = point;
                     }
                 }
 
