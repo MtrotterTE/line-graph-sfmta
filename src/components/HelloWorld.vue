@@ -47,6 +47,18 @@ const totalNumVehiclesAtIntersections = computed(() => {
     }, 0)
 })
 
+// Display values for average intersection duration with checks to avoid division by zero
+const averageIntersectionDurationDisplay = computed(() => {
+    const avgSeconds = totalTimeAtIntersections.value / totalNumVehiclesAtIntersections.value
+    return Number.isFinite(avgSeconds) ? `${avgSeconds.toFixed(2)} (seconds)` : 'No intersection data'
+})
+
+// Display values for average full trip duration with checks to avoid division by zero
+const averageFullTripDurationDisplay = computed(() => {
+    const avgMinutes = totalDurationOfFullTrips.value / totalNumberOfFullTrips.value / 60
+    return Number.isFinite(avgMinutes) ? `${avgMinutes.toFixed(2)} (minutes)` : 'No full trips'
+})
+
 // Handlers
 const showPrevTrip = () => {
     if (!filteredTrips.value.length) return
@@ -282,7 +294,7 @@ watch(
         // Reset total trip counters
         totalNumberOfFullTrips.value = 0;
         totalDurationOfFullTrips.value = 0;
-        
+
         // Cycle through each individual trip, check if vehicle is at location, and draw svg path
         allTrips.forEach((trip, i) => {
             let lastStop = null; // previous location match in this trip
@@ -357,14 +369,16 @@ watch(
             .attr('x', width / 2)
             .attr('y', height - 10)
             .attr('text-anchor', 'middle')
-            .attr('font-size', '12px')
+            .attr('font-size', '14px')
+            .attr('font-weight', 'bold')
             .text('Time (seconds)');
 
         svg.append('text')
             .attr('x', -(height / 2))
             .attr('y', 15)
             .attr('text-anchor', 'middle')
-            .attr('font-size', '12px')
+            .attr('font-size', '14px')
+            .attr('font-weight', 'bold')
             .attr('transform', 'rotate(-90)')
             .text('Distance (miles)');
 
@@ -400,6 +414,11 @@ watch(
                     const locationInfo = locations.value.find(loc => loc.name === entry.stop_name);
                     if (!locationInfo) return;
 
+                    // Check if numVehicles is zero to avoid division by zero
+                    const avgStopDuration = Number.isFinite(locationInfo.timeAtStop / locationInfo.numVehicles)
+                        ? (locationInfo.timeAtStop / locationInfo.numVehicles).toFixed(1)
+                        : '0';
+
                     const [xPos, yPos] = d3.pointer(event, container.node());
                     tooltip
                         .style('opacity', 1)
@@ -408,8 +427,8 @@ watch(
                         .html(`
                             <div><strong>${entry.stop_name}</strong></div>
                             <div>Vehicles: ${locationInfo.numVehicles}</div>
-                            <div>Time at stop: ${locationInfo.timeAtStop.toFixed(1)}s</div>
-                            <div>Average stop duration: ${(locationInfo.timeAtStop / locationInfo.numVehicles).toFixed(1)}s</div>
+                            <div>Time at stop: ${locationInfo.timeAtStop > 60 ? `${(locationInfo.timeAtStop / 60).toFixed(2)}min` : `${locationInfo.timeAtStop.toFixed(1)}s`}</div>
+                            <div>Average stop duration: ${avgStopDuration}s</div>
                         `.trim());
                 })
                 .on('mouseout', function () {
@@ -465,6 +484,11 @@ watch(
                     const locationInfo = locations.value.find(loc => loc.name === entry.intersection_name);
                     if (!locationInfo) return;
 
+                    // Check if numVehicles is greater than 0 to avoid division by zero
+                    const avgIntersectionStop = Number.isFinite(locationInfo.timeAtStop / locationInfo.numVehicles)
+                        ? (locationInfo.timeAtStop / locationInfo.numVehicles).toFixed(1)
+                        : '0';
+
                     const [xPos, yPos] = d3.pointer(event, container.node());
                     tooltip
                         .style('opacity', 1)
@@ -473,8 +497,8 @@ watch(
                         .html(`
                             <div><strong>${entry.intersection_name}</strong></div>
                             <div>Vehicles: ${locationInfo.numVehicles}</div>
-                            <div>Time at stop: ${locationInfo.timeAtStop.toFixed(1)}s</div>
-                            <div>Average stop duration: ${(locationInfo.timeAtStop / locationInfo.numVehicles).toFixed(1)}s</div>
+                            <div>Time at stop: ${locationInfo.timeAtStop > 60 ? `${(locationInfo.timeAtStop / 60).toFixed(2)}min` : `${locationInfo.timeAtStop.toFixed(1)}s`}</div>
+                            <div>Average stop duration: ${avgIntersectionStop}s</div>
                         `.trim());
                 })
                 .on('mouseout', function () {
@@ -526,9 +550,9 @@ watch(
 
         // Add "Underground" label with background
         svg.append('rect')
-            .attr('x', width - margin.right - 110) // Adjust position to align with text
+            .attr('x', width - margin.right - 95) // Adjust position to align with text
             .attr('y', (y(maxYValue) + y(thresholdDistance)) / 2 - 10) // Center vertically and adjust for text height
-            .attr('width', 100) // Width of the background rectangle
+            .attr('width', 85) // Width of the background rectangle
             .attr('height', 20) // Height of the background rectangle
             .attr('fill', 'black')
             .attr('opacity', 0.6);
@@ -543,9 +567,9 @@ watch(
 
         // Add "Surface" label with background
         svg.append('rect')
-            .attr('x', width - margin.right - 76) // Adjust position to align with text
+            .attr('x', width - margin.right - 65) // Adjust position to align with text
             .attr('y', (y(thresholdDistance) + y(0)) / 2 - 10) // Center vertically and adjust for text height
-            .attr('width', 66) // Width of the background rectangle
+            .attr('width', 55) // Width of the background rectangle
             .attr('height', 20) // Height of the background rectangle
             .attr('fill', 'black')
             .attr('opacity', 0.6);
@@ -605,7 +629,7 @@ watch(
                                 <div
                                     v-if="isLoading"
                                     id="loader"
-                                    class="absolute inset-0 flex items-center justify-center bg-white bg-opacity-70 z-10"
+                                    class="absolute inset-0 flex items-center justify-center z-10"
                                 >
                                     <v-progress-circular
                                         indeterminate
@@ -625,16 +649,20 @@ watch(
         <div class="rail pa-4">
             <div class="totals-wrapper">
                 <div class="summary-box">
-                    <h4>Total time at intersections</h4>
+                    <h4>Total time at intersections:</h4>
                     <p>{{ (totalTimeAtIntersections / 60).toFixed(2) }} (minutes)</p>
                 </div>
                 <div class="summary-box">
-                    <h4>Average intersection duration</h4>
-                    <p>{{ (totalTimeAtIntersections / totalNumVehiclesAtIntersections).toFixed(2) }} (seconds)</p>
+                    <h4>Average intersection duration:</h4>
+                    <p>{{ averageIntersectionDurationDisplay }}</p>
                 </div>
                 <div class="summary-box">
-                    <h4>Average trip duration</h4>
-                    <p>{{ (totalDurationOfFullTrips / totalNumberOfFullTrips / 60).toFixed(2) }} (minutes)</p>
+                    <h4>Average full trip duration:</h4>
+                    <p>{{ averageFullTripDurationDisplay }}</p>
+                </div>
+                <div class="summary-box">
+                    <h4>Total full trips:</h4>
+                    <p>{{ totalNumberOfFullTrips }} (vehicles)</p>
                 </div>
             </div>
         </div>
@@ -648,7 +676,11 @@ watch(
 }
 
 div.v-card-title {
-    padding-bottom: 1rem;
+    padding-bottom: 4px;
+    margin: 0 16px 12px;
+    border-bottom: 1px solid #010101;
+    padding-left: 0;
+    text-align: left;
 }
 
 .v-card-text div span {
@@ -658,8 +690,19 @@ div.v-card-title {
 
 .v-card-text > div:first-of-type {
     display: flex;
-    justify-content: center;
+    justify-content: start;
     align-items: center;
+}
+
+div.v-card {
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-right: -0.125rem;
+    background-color: #f9f8f7;
+}
+
+.v-progress-circular, #loader, .v-card-text, .v-card {
+    background-color: #f9f8f7;
 }
 
 div.v-col {
@@ -677,7 +720,7 @@ div.v-col {
     color: #fff;
     padding: 0.35rem 0.5rem;
     border-radius: 4px;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.2;
     white-space: nowrap;
 }
@@ -688,10 +731,12 @@ div.v-col {
 }
 
 .rail {
-    background-color: #fff;
+    background-color: #f9f8f7;
     color: #010101;
     margin: 4px 4px 4px 0;
     border-radius: 4px;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
 }
 
 .totals-wrapper {
@@ -707,6 +752,15 @@ div.v-col {
     padding: 8px;
     border-radius: 3px;
     border: 1px solid #010101;
+    background-color: #f0f0f0;
+    box-shadow: 0 0 6px 4px rgba(0, 0, 0, 0.05);
 }
 
+.summary-box h4, .summary-box p {
+    line-height: 1.125rem;
+}
+
+.summary-box p {
+    padding: 8px 0;
+}
 </style>

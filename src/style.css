@@ -1,5 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto+Condensed:ital,wght@0,100..900;1,100..900&display=swap');
+
 :root {
-    font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+    font-family: "Roboto Condensed", sans-serif;
     line-height: 1.5;
     font-weight: 400;
 
@@ -28,6 +30,7 @@ body {
     place-items: center;
     min-width: 320px;
     min-height: 100vh;
+    background-color: #010101;
 }
 
 h1 {
@@ -64,4 +67,8 @@ button:focus-visible {
     padding: 0;
     text-align: center;
     width: 100%;
+}
+
+.v-btn__content {
+    letter-spacing: 0;
 }
