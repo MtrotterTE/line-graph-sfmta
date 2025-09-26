@@ -241,6 +241,9 @@ watch(
 
         const width = 1100;
         const height = 760;
+        svg
+            .attr('viewBox', `0 0 ${width} ${height}`)
+            .attr('preserveAspectRatio', 'xMidYMid meet');
         const margin = { top: 20, right: 140, bottom: 50, left: 200 };
 
         const flatData = allTrips.flat();
@@ -625,7 +628,7 @@ watch(
                             </div>
 
                             <!-- Graph container with loader overlay -->
-                            <div class="graph-container relative" style="height:760px;">
+                            <div class="graph-container relative">
                                 <div
                                     v-if="isLoading"
                                     id="loader"
@@ -637,7 +640,7 @@ watch(
                                         size="64"
                                     />
                                 </div>
-                                <svg id="line-graph" width="1200" height="100%"></svg>
+                                <svg id="line-graph"></svg>
                             </div>
                         </v-card-text>
                     </v-card>
@@ -711,6 +714,14 @@ div.v-col {
 
 .graph-container {
     position: relative;
+    width: 100%;
+    max-width: 1200px;
+    aspect-ratio: 1100 / 760;
+}
+
+.graph-container svg {
+    width: 100%;
+    height: 100%;
 }
 
 .graph-tooltip {
