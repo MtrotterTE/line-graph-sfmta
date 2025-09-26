@@ -15,6 +15,8 @@ const stationDistances = ref([]) // Distances of all stations along K line path
 const intersectionDistances = ref([]) // Distances of intersections along K line path
 const locations = ref([]); // Locations of stops and intersections
 const vehicleAtStopRadiusFeet = ref(250); // 250 feet radius to consider vehicle at stop
+const totalNumberOfFullTrips = ref(0); // Total number of full trips (from start to end station)
+const totalDurationOfFullTrips = ref(0); // Total duration of all full trips (from start to end station)
 
 // ✅ All trips in scope (date-filtered OR all dates)
 const filteredTrips = computed(() => {
@@ -277,6 +279,10 @@ watch(
             location.numVehicles = 0;
         });
 
+        // Reset total trip counters
+        totalNumberOfFullTrips.value = 0;
+        totalDurationOfFullTrips.value = 0;
+        
         // Cycle through each individual trip, check if vehicle is at location, and draw svg path
         allTrips.forEach((trip, i) => {
             let lastStop = null; // previous location match in this trip
@@ -304,6 +310,17 @@ watch(
                     if (locationMatch.name === "San Jose & Geneva Ave") {
                         console.log("setting leavingFirstTerminalStation");
                         leavingFirstTerminalStation = point;
+                    }
+
+                    // If vehicle is at ending terminal station, and left starting terminal station in same trip, compute trip duration
+                    if (locationMatch.name === "Embarcadero Station" && leavingFirstTerminalStation) {
+                        console.log("trip complete, resetting leavingFirstTerminalStation");
+                        console.log(point.cumulativeTime);
+                        console.log(leavingFirstTerminalStation.cumulativeTime);
+                        const tripDuration = point.cumulativeTime - leavingFirstTerminalStation.cumulativeTime;
+                        leavingFirstTerminalStation = null; // reset for next trip
+                        totalNumberOfFullTrips.value += 1;
+                        totalDurationOfFullTrips.value += tripDuration;
                     }
                 }
 
@@ -609,11 +626,15 @@ watch(
             <div class="totals-wrapper">
                 <div class="summary-box">
                     <h4>Total time at intersections</h4>
-                    <p>{{ totalTimeAtIntersections }} (seconds)</p>
+                    <p>{{ (totalTimeAtIntersections / 60).toFixed(2) }} (minutes)</p>
                 </div>
                 <div class="summary-box">
                     <h4>Average intersection duration</h4>
                     <p>{{ (totalTimeAtIntersections / totalNumVehiclesAtIntersections).toFixed(2) }} (seconds)</p>
+                </div>
+                <div class="summary-box">
+                    <h4>Average trip duration</h4>
+                    <p>{{ (totalDurationOfFullTrips / totalNumberOfFullTrips / 60).toFixed(2) }} (minutes)</p>
                 </div>
             </div>
         </div>
