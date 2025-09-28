@@ -2,6 +2,7 @@
 import { ref, onMounted, watch, computed } from 'vue'
 import * as d3 from 'd3'
 import { calculateTimeElapsed, safeToArray, findNearestIndex, isWithinDistance, getDistanceInFeet } from '../utils/helpers.js'
+import NavigationRail from './NavigationRail.vue'
 
 const graphData = ref([])
 const currentTripIndex = ref(-1)   // -1 means "show all trips"
@@ -591,6 +592,7 @@ watch(
 
 <template>
     <div class="d-flex">
+        <NavigationRail />
         <v-container>
             <v-row>
                 <v-col>
@@ -701,6 +703,9 @@ div.v-card {
     border-top-right-radius: 0;
     border-bottom-right-radius: 0;
     margin-right: -0.125rem;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    margin-left: -0.125rem;
     background-color: #f9f8f7;
 }
 
@@ -760,18 +765,27 @@ div.v-col {
 
 .summary-box {
     margin-bottom: 32px;
-    padding: 8px;
+    padding: 0;
     border-radius: 3px;
     border: 1px solid #010101;
-    background-color: #f0f0f0;
+    background-color: #fff;
     box-shadow: 0 0 6px 4px rgba(0, 0, 0, 0.05);
+    width: 100%;
 }
 
-.summary-box h4, .summary-box p {
+.summary-box h4 {
     line-height: 1.125rem;
+    padding: 8px 0;
+    background-color: #f0f0f0;
+    border-bottom: 1px solid #d3d3d3;
 }
 
 .summary-box p {
     padding: 8px 0;
+    line-height: 1.125rem;
+}
+
+.v-container.v-container {
+    max-width: none;
 }
 </style>
