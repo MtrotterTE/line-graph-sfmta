@@ -602,7 +602,7 @@ watch(
                         </v-card-title>
                         <v-card-text>
                             <!-- Date filter buttons -->
-                            <div class="mb-4 flex gap-2">
+                            <div class="date-button-container mb-4 flex gap-2">
                                 <v-btn
                                     v-for="date in availableDates"
                                     class="mr-2"
@@ -686,6 +686,7 @@ div.v-card-title {
     border-bottom: 1px solid #010101;
     padding-left: 0;
     text-align: left;
+    font-size: 1.5rem;
 }
 
 .v-card-text div span {
@@ -775,9 +776,10 @@ div.v-col {
 
 .summary-box h4 {
     line-height: 1.125rem;
-    padding: 8px 0;
+    padding: 8px;
     background-color: #f0f0f0;
     border-bottom: 1px solid #d3d3d3;
+    border-radius: 3px;
 }
 
 .summary-box p {
@@ -787,5 +789,10 @@ div.v-col {
 
 .v-container.v-container {
     max-width: none;
+}
+
+.date-button-container {
+    padding-bottom: 16px;
+    border-bottom: 1px solid #010101;
 }
 </style>

@@ -1,17 +1,12 @@
-<script setup>
-const navButtons = ['Overview', 'Trips', 'Stations', 'Settings']
-</script>
-
 <template>
     <div class="rail navigation-rail pa-4">
         <div class="nav-buttons">
-            <v-btn
-                v-for="label in navButtons"
-                :key="label"
-                size="small"
-            >
-                {{ label }}
-            </v-btn>
+            <h2>Distance vs Time</h2>
+            <v-btn size="large">K Line Outbound</v-btn>
+            <v-btn size="large">K Line Inbound</v-btn>
+            <h2>Distance vs Speed</h2>
+            <v-btn size="large">K Line Outbound</v-btn>
+            <v-btn size="large">K Line Inbound</v-btn>
         </div>
     </div>
 </template>
@@ -26,6 +21,7 @@ const navButtons = ['Overview', 'Trips', 'Stations', 'Settings']
     display: flex;
     align-items: center;
     min-width: 180px;
+    background-color: #f9f8f7;
 }
 
 .nav-buttons {
@@ -37,5 +33,19 @@ const navButtons = ['Overview', 'Trips', 'Stations', 'Settings']
 
 .nav-buttons .v-btn {
     justify-content: center;
+}
+
+.v-btn span {
+    text-wrap: auto;
+    white-space: normal;
+    color: #010101;
+}
+
+h2 {
+    font-size: 1.25rem;
+    font-weight: 400;
+    border-bottom: 1px solid #010101;
+    margin-top: 16px;
+    color: #010101;
 }
 </style>
