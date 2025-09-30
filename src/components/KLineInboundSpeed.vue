@@ -598,7 +598,7 @@ watch(
                 <v-col>
                     <v-card>
                         <v-card-title>
-                            Tenco CityScale K Line Intersection Delays For Inbound K Line
+                            Tenco CityScale K Line Intersection Delays For Inbound K Line (Distance vs Time)
                         </v-card-title>
                         <v-card-text>
                             <!-- Date filter buttons -->

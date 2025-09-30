@@ -1,9 +1,9 @@
 <script setup>
-import HelloWorld from './components/KLineOutbound.vue'
+import KLineInboundTime from './components/KLineInboundTime.vue'
 </script>
 
 <template>
-    <HelloWorld/>
+    <KLineInboundTime/>
 </template>
 
 <style scoped>
