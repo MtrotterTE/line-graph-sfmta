@@ -30,7 +30,7 @@ body {
     place-items: center;
     min-width: 320px;
     min-height: 100vh;
-    background-color: #d3d3d3;
+    background-color: #27292b;
 }
 
 h1 {
@@ -67,6 +67,7 @@ button:focus-visible {
     padding: 0;
     text-align: center;
     width: 100%;
+    background-color: #d3d3d3;
 }
 
 .v-btn__content {
@@ -86,4 +87,38 @@ div.v-card {
     border-bottom-right-radius: 0;
     background-color: #f9f8f7;
     box-shadow: none;
+}
+
+main.content {
+    margin-right: 16px;
+}
+
+.rail .totals-header {
+    padding-bottom: 4px;
+    margin: 0 16px 12px;
+    border-bottom: 1px solid #010101;
+    padding-left: 0;
+    text-align: left;
+    font-size: 1.25rem;
+    font-weight: 500;
+    margin: 0 0 auto 0;
+}
+
+.rail .totals-wrapper {
+    justify-content: start;
+}
+
+.rail .totals-wrapper .summary-box {
+    margin-top: 24px;
+    margin-bottom: 0;
+}
+
+.app-layout .nav-buttons h2, .app-layout .nav-buttons h1 {
+    padding-left: 0;
+    text-align: left;
+    border-bottom: 3px solid #515559;
+}
+
+.app-layout .nav-buttons h1 {
+    font-size: 24px;
 }

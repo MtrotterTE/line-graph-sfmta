@@ -18,6 +18,7 @@ const handleSelect = (view) => {
 <template>
     <div class="rail navigation-rail pa-4">
         <div class="nav-buttons">
+            <h1>Choose a Graph:</h1>
             <h2>Distance vs Time</h2>
             <v-btn
                 size="large"
@@ -62,11 +63,11 @@ const handleSelect = (view) => {
     align-self: stretch;
     box-sizing: border-box;
     min-width: 180px;
-    background-color: #d3d3d3;
+    background-color: #27292b;
     height: 100%;
     margin-right: 16px;
-    border-right: 1px solid #010101;
-    border-left: 1px solid #010101;
+    border-right: 3px solid #515559;
+    border-left: 3px solid #515559;
 }
 
 .nav-buttons {
@@ -78,10 +79,15 @@ const handleSelect = (view) => {
 
 .nav-buttons .v-btn {
     justify-content: center;
+    background-color: #a4a6a2;
+}
+
+.nav-buttons .v-btn:hover {
+    background-color: #f9f8f7;
 }
 
 .nav-buttons .v-btn.active {
-    background-color: #7d7f7c;
+    background-color: #f9f8f7;
 }
 
 .nav-buttons .v-btn .v-btn__content {
@@ -94,11 +100,11 @@ const handleSelect = (view) => {
     color: #f9f8f7;
 }
 
-h2 {
+h2, h1 {
     font-size: 1.25rem;
-    font-weight: 400;
-    border-bottom: 1px solid #010101;
+    font-weight: 600;
     margin-top: 16px;
-    color: #010101;
+    color: #b8bdc2;
+    line-height: 1.5;
 }
 </style>

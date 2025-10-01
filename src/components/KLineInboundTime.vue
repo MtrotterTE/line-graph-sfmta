@@ -650,6 +650,7 @@ watch(
 
         <!-- Right Rail -->
         <div class="rail pa-4">
+            <h2 class="totals-header">Totals and Averages</h2>
             <div class="totals-wrapper">
                 <div class="summary-box">
                     <h4>Total time at intersections:</h4>
