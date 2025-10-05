@@ -96,7 +96,7 @@ onMounted(async () => {
         // Group data by trip_id, vehicle_id, and date into a 2D array
         const filteredData = Object.values(
             combinedData.reduce((acc, item) => {
-                if (item.route_id === "K" && item.direction_id === 1) {
+                if (item.route_id === "K" && item.direction_id === 1) { // 1 for inbound
                     const uniqueKey = item.trip_id + '_' + item.vehicle_id + '_' + item.date_pst
                     if (!acc[uniqueKey]) acc[uniqueKey] = []
                     acc[uniqueKey].push(item)
@@ -323,15 +323,11 @@ watch(
 
                     // If vehicle is at starting terminal station, set leavingFirstTerminalStation to signify start of trip
                     if (locationMatch.name === "San Jose & Geneva Ave") {
-                        console.log("setting leavingFirstTerminalStation");
                         leavingFirstTerminalStation = point;
                     }
 
                     // If vehicle is at ending terminal station, and left starting terminal station in same trip, compute trip duration
                     if (locationMatch.name === "Embarcadero Station" && leavingFirstTerminalStation) {
-                        console.log("trip complete, resetting leavingFirstTerminalStation");
-                        console.log(point.cumulativeTime);
-                        console.log(leavingFirstTerminalStation.cumulativeTime);
                         const tripDuration = point.cumulativeTime - leavingFirstTerminalStation.cumulativeTime;
                         leavingFirstTerminalStation = null; // reset for next trip
                         totalNumberOfFullTrips.value += 1;
@@ -339,6 +335,7 @@ watch(
                     }
                 }
 
+                // If vehicle is at the same location as last point, accumulate time at stop
                 if (locationMatch && lastPoint) {
                     const time = point.cumulativeTime - lastPoint.cumulativeTime;
                     let calculatedSpeed = null;

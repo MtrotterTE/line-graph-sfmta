@@ -21,7 +21,7 @@ const vuetify = createVuetify({
         themes: {
             light: {
                 colors: {
-                    primary: '##D3D3D3',
+                    primary: '#D3D3D3',
                     secondary: '#F3F3F3',
                     next: '#708090',
                     prev: '#708090',
@@ -30,7 +30,7 @@ const vuetify = createVuetify({
             },
             dark: {
                 colors: {
-                    primary: '##D3D3D3',
+                    primary: '#D3D3D3',
                     secondary: '#F3F3F3',
                     next: '#708090',
                     prev: '#708090',
