@@ -182,10 +182,14 @@ onMounted(async () => {
             let cumulativeDistance = 0;
             let cumulativeTime = 0;
 
+            // Find nearest point on K line path for the starting point of the trip
+            const startIdx = findNearestIndex(kLinePath, { lat: trip[0].latitude, lon: trip[0].longitude });
+            const startDistance = kLinePath[startIdx].shape_dist_traveled;
+
             return trip.map((item, index, array) => {
                 // If within 350 feet of start station, vehicle is considered at start
                 if (index === 0 || isWithinDistance(item.latitude, item.longitude, startStationLatitude, startStationLongitude, 350)) {
-                    return { cumulativeDistance: 0, cumulativeTime: 0, trip_id: item.trip_id, date_pst: item.date_pst, latitude: item.latitude, longitude: item.longitude, speed: item.speed, vehicle_id: item.vehicle_id};
+                    return { cumulativeDistance: startDistance, cumulativeTime: 0, trip_id: item.trip_id, date_pst: item.date_pst, latitude: item.latitude, longitude: item.longitude, speed: item.speed, vehicle_id: item.vehicle_id};
                 }
 
                 // Calculate time elapsed since last point
@@ -589,7 +593,7 @@ watch(
                 <v-col>
                     <v-card>
                         <v-card-title>
-                            Tenco CityScale K Line Intersection Delays For Outbound K Line (Distance vs Time)
+                            Tenco CityScale K Line Intersection Delays For Outbound K Line (Distance vs Speed)
                         </v-card-title>
                         <v-card-text>
                             <!-- Date filter buttons -->
