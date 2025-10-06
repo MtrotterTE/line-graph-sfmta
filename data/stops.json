@@ -275,16 +275,16 @@
                     "stop_id": "15728",
                     "stop_name": "Castro Station",
                     "location": {
-                        "latitude": 37.762699,
-                        "longitude": -122.435150
+                        "latitude": 37.76262,
+                        "longitude": -122.435231
                     }
                 },
                 {
                     "stop_id": "15726",
                     "stop_name": "Church Station",
                     "location": {
-                        "latitude": 37.76262,
-                        "longitude": -122.435231
+                        "latitude": 37.767194,
+                        "longitude": -122.429168
                     }
                 },
                 {
