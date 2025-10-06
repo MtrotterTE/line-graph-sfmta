@@ -96,7 +96,7 @@ onMounted(async () => {
         // Group data by trip_id, vehicle_id, and date into a 2D array
         const filteredData = Object.values(
             combinedData.reduce((acc, item) => {
-                if (item.route_id === "K" && item.direction_id === 1) {
+                if (item.route_id === "K" && item.direction_id === 0) { // 0 for outbound
                     const uniqueKey = item.trip_id + '_' + item.vehicle_id + '_' + item.date_pst
                     if (!acc[uniqueKey]) acc[uniqueKey] = []
                     acc[uniqueKey].push(item)
@@ -112,41 +112,41 @@ onMounted(async () => {
 
         // Array of location objects (intersections and stations), includes total time at each location (timeAtStop) and total number of vehicles (numVehicles)
         locations.value = [
-            { isIntersection: false, name: "San Jose & Geneva Ave", location: stopsArray[0].inbound.stops[0].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Balboa Park BART Mezzanine Level", location: stopsArray[0].outbound.stops[19].location, timeAtStop: 0, numVehicles: 0 },
             { isIntersection: true, name: "Ocean Ave & Balboa Park", location: stopsArray[0].intersections.stops[3].location, timeAtStop: 0, numVehicles: 0 },
             { isIntersection: true, name: "Howlth St & Ocean Ave", location: stopsArray[0].intersections.stops[1].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Ocean Ave/CCSF Pedestrian Bridge", location: stopsArray[0].inbound.stops[1].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Ocean Ave & Lee St", location: stopsArray[0].inbound.stops[2].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Ocean Ave/CCSF Pedestrian Bridge", location: stopsArray[0].outbound.stops[18].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Ocean Ave & Lee St", location: stopsArray[0].outbound.stops[17].location, timeAtStop: 0, numVehicles: 0 },
             { isIntersection: true, name: "Ocean Ave & Plymouth Ave", location: stopsArray[0].intersections.stops[4].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Ocean Ave & Miramar Ave", location: stopsArray[0].inbound.stops[3].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Ocean Ave & Dorado Ter", location: stopsArray[0].inbound.stops[4].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Ocean Ave & Fairfield Way", location: stopsArray[0].inbound.stops[5].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Ocean Ave & Miramar Ave", location: stopsArray[0].outbound.stops[16].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Ocean Ave & Jules Ave", location: stopsArray[0].outbound.stops[15].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Ocean Ave & Victoria Street", location: stopsArray[0].outbound.stops[14].location, timeAtStop: 0, numVehicles: 0 },
             { isIntersection: true, name: "Ocean Ave & Cerritos Ave", location: stopsArray[0].intersections.stops[5].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Ocean Ave & Aptos Ave", location: stopsArray[0].inbound.stops[6].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Ocean Ave & San Leandro Way", location: stopsArray[0].inbound.stops[7].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Junipero Serra Blvd & Ocean Ave", location: stopsArray[0].inbound.stops[8].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Ocean Ave & Aptos Ave", location: stopsArray[0].outbound.stops[13].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Ocean Ave & San Leandro Way", location: stopsArray[0].outbound.stops[12].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Junipero Serra Blvd & Ocean Ave", location: stopsArray[0].outbound.stops[11].location, timeAtStop: 0, numVehicles: 0 },
             { isIntersection: true, name: "Junipero Serra Blvd & Monterey Blvd", location: stopsArray[0].intersections.stops[0].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "West Portal Ave & Sloat Blvd", location: stopsArray[0].inbound.stops[9].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "West Portal Ave & Sloat Blvd", location: stopsArray[0].outbound.stops[10].location, timeAtStop: 0, numVehicles: 0 },
             { isIntersection: true, name: "West Portal Ave & 15th Ave", location: stopsArray[0].intersections.stops[6].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "West Portal Ave & 14th Ave", location: stopsArray[0].inbound.stops[10].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "West Portal Ave & 14th Ave", location: stopsArray[0].outbound.stops[9].location, timeAtStop: 0, numVehicles: 0 },
             { isIntersection: true, name: "West Portal Ave & Vicente St", location: stopsArray[0].intersections.stops[2].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "West Portal Station", location: stopsArray[0].inbound.stops[11].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Forest Hill Station", location: stopsArray[0].inbound.stops[12].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Castro Station", location: stopsArray[0].inbound.stops[13].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Church Station", location: stopsArray[0].inbound.stops[14].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Van Ness Station", location: stopsArray[0].inbound.stops[15].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Civic Center Station", location: stopsArray[0].inbound.stops[16].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Powell Station", location: stopsArray[0].inbound.stops[17].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Montgomery Station", location: stopsArray[0].inbound.stops[18].location, timeAtStop: 0, numVehicles: 0 },
-            { isIntersection: false, name: "Embarcadero Station", location: stopsArray[0].inbound.stops[19].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "West Portal Station", location: stopsArray[0].outbound.stops[8].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Forest Hill Station", location: stopsArray[0].outbound.stops[7].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Castro Station", location: stopsArray[0].outbound.stops[6].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Church Station", location: stopsArray[0].outbound.stops[5].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Van Ness Station", location: stopsArray[0].outbound.stops[4].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Civic Center Station", location: stopsArray[0].outbound.stops[3].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Powell Station", location: stopsArray[0].outbound.stops[2].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Montgomery Station", location: stopsArray[0].outbound.stops[1].location, timeAtStop: 0, numVehicles: 0 },
+            { isIntersection: false, name: "Embarcadero Station", location: stopsArray[0].outbound.stops[0].location, timeAtStop: 0, numVehicles: 0 },
         ];
 
-        // Lon and Lat of start station (San Jose and Geneva)
-        const startStationLongitude = stopsArray[0].inbound.stops[0].location.longitude;
-        const startStationLatitude = stopsArray[0].inbound.stops[0].location.latitude;
+        // Lon and Lat of start station (beyond Embarcadero station, using first point on polyline)
+        const startStationLongitude = stopsArray[0].polyline.shapeArrayOutbound[0].shape_pt_lon;
+        const startStationLatitude = stopsArray[0].polyline.shapeArrayOutbound[0].shape_pt_lat;
 
         // Get the K line path coordinates
-        const kLinePath = stopsArray[0].polyline.shapeArray.map(point => ({
+        const kLinePath = stopsArray[0].polyline.shapeArrayOutbound.map(point => ({
             lat: point.shape_pt_lat,
             lon: point.shape_pt_lon,
             shape_dist_traveled: point.shape_dist_traveled
@@ -157,7 +157,7 @@ onMounted(async () => {
         westPortalDistance.value = kLinePath[westPortalStationIndex.value].shape_dist_traveled
 
         // Store distances of all stations along K line path
-        stationDistances.value = stopsArray[0].inbound.stops.map(stop => {
+        stationDistances.value = stopsArray[0].outbound.stops.map(stop => {
             const idx = findNearestIndex(kLinePath, { lat: stop.location.latitude, lon: stop.location.longitude })
             return {
                 cumulativeDistance: kLinePath[idx].shape_dist_traveled,
@@ -249,7 +249,7 @@ watch(
         const flatData = allTrips.flat();
 
         const x = d3.scaleLinear()
-            .domain([0, d3.max(flatData, d => d?.cumulativeTime)])
+            .domain([0, d3.max(flatData, d => d?.speed)])
             .range([margin.left, width - margin.right]);
 
         const y = d3.scaleLinear()
@@ -257,18 +257,18 @@ watch(
             .range([height - margin.bottom, margin.top]);
 
         const line = d3.line()
-            .x(d => x(d?.cumulativeTime))
+            .x(d => x(d?.speed))
             .y(d => y(d?.cumulativeDistance));
 
         const maxYValue = d3.max(flatData, d => d?.cumulativeDistance);
 
-        // Add gray background rectangle for distances >= kLinePath[westPortalStationIndex].shape_dist_traveled
+        // Add gray background rectangle for distances <= kLinePath[westPortalStationIndex].shape_dist_traveled
         const thresholdDistance = westPortalDistance.value || 0; // Default to 0 if not found
         svg.append('rect')
             .attr('x', margin.left)
-            .attr('y', y(maxYValue))
+            .attr('y', y(thresholdDistance))
             .attr('width', width - margin.left - margin.right)
-            .attr('height', y(thresholdDistance) - y(maxYValue))
+            .attr('height', height - margin.bottom - y(thresholdDistance))
             .attr('fill', 'lightgray')
             .attr('opacity', 0.5);
 
@@ -276,9 +276,7 @@ watch(
             .attr('transform', `translate(0,${height - margin.bottom})`)
             .call(
                 d3.axisBottom(x).tickFormat((d) => {
-                    const minutes = Math.floor(d / 60);
-                    const seconds = Math.floor(d % 60);
-                    return `${minutes}m ${seconds}s`;
+                    return `${d} m/s`;
                 })
             );
 
@@ -322,16 +320,12 @@ watch(
                     }
 
                     // If vehicle is at starting terminal station, set leavingFirstTerminalStation to signify start of trip
-                    if (locationMatch.name === "San Jose & Geneva Ave") {
-                        console.log("setting leavingFirstTerminalStation");
+                    if (locationMatch.name === "Embarcadero Station") {
                         leavingFirstTerminalStation = point;
                     }
 
                     // If vehicle is at ending terminal station, and left starting terminal station in same trip, compute trip duration
-                    if (locationMatch.name === "Embarcadero Station" && leavingFirstTerminalStation) {
-                        console.log("trip complete, resetting leavingFirstTerminalStation");
-                        console.log(point.cumulativeTime);
-                        console.log(leavingFirstTerminalStation.cumulativeTime);
+                    if (locationMatch.name === "Balboa Park BART Mezzanine Level" && leavingFirstTerminalStation) {
                         const tripDuration = point.cumulativeTime - leavingFirstTerminalStation.cumulativeTime;
                         leavingFirstTerminalStation = null; // reset for next trip
                         totalNumberOfFullTrips.value += 1;
@@ -339,6 +333,7 @@ watch(
                     }
                 }
 
+                // If vehicle is at the same location as last point, accumulate time at stop
                 if (locationMatch && lastPoint) {
                     const time = point.cumulativeTime - lastPoint.cumulativeTime;
                     let calculatedSpeed = null;
@@ -374,7 +369,7 @@ watch(
             .attr('text-anchor', 'middle')
             .attr('font-size', '14px')
             .attr('font-weight', 'bold')
-            .text('Time (seconds)');
+            .text('Speed (m/s)');
 
         svg.append('text')
             .attr('x', -(height / 2))
@@ -529,9 +524,7 @@ watch(
         svg.append('text')
             .attr('id', `label-intersection`) // Add an ID for easier selection
             .attr('x', width - margin.right + 6) // Position to the right of the graph
-            .attr('y', 
-                (2.7 < maxYValue ? y(2.7) - 10 : y(maxYValue) - 10)
-            ) // Above last intersection line
+            .attr('y', y(maxYValue) - 10) // Above last intersection line
             .attr('text-anchor', 'start') // Align text to the start (left)
             .attr('font-size', '13px')
             .attr('fill', 'blue')
@@ -553,9 +546,9 @@ watch(
 
         // Add "Underground" label with background
         svg.append('rect')
-            .attr('x', width - margin.right - 95) // Adjust position to align with text
+            .attr('x', width - margin.right - 65) // Adjust position to align with text
             .attr('y', (y(maxYValue) + y(thresholdDistance)) / 2 - 10) // Center vertically and adjust for text height
-            .attr('width', 85) // Width of the background rectangle
+            .attr('width', 55) // Width of the background rectangle
             .attr('height', 20) // Height of the background rectangle
             .attr('fill', 'black')
             .attr('opacity', 0.6);
@@ -566,13 +559,13 @@ watch(
             .attr('text-anchor', 'end') // Align text to the end (right)
             .attr('font-size', '14px')
             .attr('fill', 'white') // Text color to contrast with the black background
-            .text('Underground');
+            .text('Surface');
 
         // Add "Surface" label with background
         svg.append('rect')
-            .attr('x', width - margin.right - 65) // Adjust position to align with text
+            .attr('x', width - margin.right - 95) // Adjust position to align with text
             .attr('y', (y(thresholdDistance) + y(0)) / 2 - 10) // Center vertically and adjust for text height
-            .attr('width', 55) // Width of the background rectangle
+            .attr('width', 85) // Width of the background rectangle
             .attr('height', 20) // Height of the background rectangle
             .attr('fill', 'black')
             .attr('opacity', 0.6);
@@ -583,7 +576,7 @@ watch(
             .attr('text-anchor', 'end') // Align text to the end (right)
             .attr('font-size', '14px')
             .attr('fill', 'white') // Text color to contrast with the black background
-            .text('Surface');
+            .text('Underground');
     },
     { immediate: true }
 );
@@ -596,7 +589,7 @@ watch(
                 <v-col>
                     <v-card>
                         <v-card-title>
-                            Tenco CityScale K Line Intersection Delays For Outbound K Line (Distance vs Speed)
+                            Tenco CityScale K Line Intersection Delays For Outbound K Line (Distance vs Time)
                         </v-card-title>
                         <v-card-text>
                             <!-- Date filter buttons -->
@@ -650,6 +643,7 @@ watch(
 
         <!-- Right Rail -->
         <div class="rail pa-4">
+            <h2 class="totals-header">Totals and Averages</h2>
             <div class="totals-wrapper">
                 <div class="summary-box">
                     <h4>Total time at intersections:</h4>

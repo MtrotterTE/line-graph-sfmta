@@ -249,7 +249,7 @@ watch(
         const flatData = allTrips.flat();
 
         const x = d3.scaleLinear()
-            .domain([0, d3.max(flatData, d => d?.cumulativeTime)])
+            .domain([0, d3.max(flatData, d => d?.speed)])
             .range([margin.left, width - margin.right]);
 
         const y = d3.scaleLinear()
@@ -257,7 +257,7 @@ watch(
             .range([height - margin.bottom, margin.top]);
 
         const line = d3.line()
-            .x(d => x(d?.cumulativeTime))
+            .x(d => x(d?.speed))
             .y(d => y(d?.cumulativeDistance));
 
         const maxYValue = d3.max(flatData, d => d?.cumulativeDistance);
@@ -276,9 +276,7 @@ watch(
             .attr('transform', `translate(0,${height - margin.bottom})`)
             .call(
                 d3.axisBottom(x).tickFormat((d) => {
-                    const minutes = Math.floor(d / 60);
-                    const seconds = Math.floor(d % 60);
-                    return `${minutes}m ${seconds}s`;
+                    return `${d} m/s`;
                 })
             );
 
@@ -323,15 +321,11 @@ watch(
 
                     // If vehicle is at starting terminal station, set leavingFirstTerminalStation to signify start of trip
                     if (locationMatch.name === "San Jose & Geneva Ave") {
-                        console.log("setting leavingFirstTerminalStation");
                         leavingFirstTerminalStation = point;
                     }
 
                     // If vehicle is at ending terminal station, and left starting terminal station in same trip, compute trip duration
                     if (locationMatch.name === "Embarcadero Station" && leavingFirstTerminalStation) {
-                        console.log("trip complete, resetting leavingFirstTerminalStation");
-                        console.log(point.cumulativeTime);
-                        console.log(leavingFirstTerminalStation.cumulativeTime);
                         const tripDuration = point.cumulativeTime - leavingFirstTerminalStation.cumulativeTime;
                         leavingFirstTerminalStation = null; // reset for next trip
                         totalNumberOfFullTrips.value += 1;
@@ -374,7 +368,7 @@ watch(
             .attr('text-anchor', 'middle')
             .attr('font-size', '14px')
             .attr('font-weight', 'bold')
-            .text('Time (seconds)');
+            .text('Speed (m/s)');
 
         svg.append('text')
             .attr('x', -(height / 2))
@@ -650,6 +644,7 @@ watch(
 
         <!-- Right Rail -->
         <div class="rail pa-4">
+            <h2 class="totals-header">Totals and Averages</h2>
             <div class="totals-wrapper">
                 <div class="summary-box">
                     <h4>Total time at intersections:</h4>
