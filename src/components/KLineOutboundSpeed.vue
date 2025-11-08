@@ -20,10 +20,14 @@ const totalDurationOfFullTrips = ref(0); // Total duration of all full trips (fr
 
 // ✅ All trips in scope (date-filtered OR all dates)
 const filteredTrips = computed(() => {
-    if (allDatesMode.value) return graphData.value
+    if (allDatesMode.value) {
+        return graphData.value.filter(trip => 
+            trip.some(item => isWithinDistance(item.latitude, item.longitude, locations.value[26].location.latitude, locations.value[26].location.longitude, 350)) && !isWithinDistance(trip[0].latitude, trip[0].longitude, trip[trip.length - 1].latitude, trip[trip.length - 1].longitude, 350) // Filter out trips where that dont include start station at some point, also filtering out trips where vehicle did not move
+        )
+    }
     if (!selectedDate.value) return []
     return graphData.value.filter(trip =>
-        trip.some(item => item.date_pst === selectedDate.value)
+        trip.some(item => item.date_pst === selectedDate.value) && trip.some(item => isWithinDistance(item.latitude, item.longitude, locations.value[26].location.latitude, locations.value[26].location.longitude, 350)) && !isWithinDistance(trip[0].latitude, trip[0].longitude, trip[trip.length - 1].latitude, trip[trip.length - 1].longitude, 350) // Filter out trips where that dont include start station at some point and dates other than the one selected. Also filtering out trips where vehicle did not move
     )
 })
 
