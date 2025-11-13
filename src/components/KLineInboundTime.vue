@@ -17,6 +17,17 @@ const locations = ref([]); // Locations of stops and intersections
 const vehicleAtStopRadiusFeet = ref(250); // 250 feet radius to consider vehicle at stop
 const totalNumberOfFullTrips = ref(0); // Total number of full trips (from start to end station)
 const totalDurationOfFullTrips = ref(0); // Total duration of all full trips (from start to end station)
+const graphContainerRef = ref(null)
+const graphSvgRef = ref(null)
+const isZoomEnabled = ref(false)
+const isZoomLensVisible = ref(false)
+const zoomLensPosition = ref({ left: 0, top: 0 })
+const zoomBackgroundSize = ref('0px 0px')
+const zoomBackgroundPosition = ref('0px 0px')
+const zoomImageUrl = ref('')
+const ZOOM_FACTOR = 2.5
+const LENS_SIZE = 220
+const CURSOR_OFFSET = 24
 
 // ✅ All trips in scope (date-filtered OR all dates)
 const filteredTrips = computed(() => {
@@ -63,6 +74,16 @@ const averageFullTripDurationDisplay = computed(() => {
     return Number.isFinite(avgMinutes) ? `${avgMinutes.toFixed(2)} (minutes)` : 'No full trips'
 })
 
+const zoomLensStyles = computed(() => ({
+    width: `${LENS_SIZE}px`,
+    height: `${LENS_SIZE}px`,
+    left: `${zoomLensPosition.value.left}px`,
+    top: `${zoomLensPosition.value.top}px`,
+    backgroundImage: zoomImageUrl.value,
+    backgroundSize: zoomBackgroundSize.value,
+    backgroundPosition: zoomBackgroundPosition.value
+}))
+
 // Handlers
 const showPrevTrip = () => {
     if (!filteredTrips.value.length) return
@@ -77,6 +98,57 @@ const showNextTrip = () => {
 const showAllTrips = () => {
     currentTripIndex.value = -1
     allDatesMode.value = true  // ✅ show everything again
+}
+
+const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
+
+const updateZoomSnapshot = () => {
+    if (!graphSvgRef.value || typeof window === 'undefined') return
+    const serializer = new XMLSerializer()
+    let source = serializer.serializeToString(graphSvgRef.value)
+    if (!source.includes('xmlns="http://www.w3.org/2000/svg"')) {
+        source = source.replace('<svg', '<svg xmlns="http://www.w3.org/2000/svg"')
+    }
+    const encoded = window.btoa(unescape(encodeURIComponent(source)))
+    zoomImageUrl.value = `url("data:image/svg+xml;base64,${encoded}")`
+}
+
+const toggleZoom = () => {
+    isZoomEnabled.value = !isZoomEnabled.value
+    if (!isZoomEnabled.value) {
+        isZoomLensVisible.value = false
+    } else {
+        updateZoomSnapshot()
+    }
+}
+
+const handleGraphMouseMove = (event) => {
+    if (!isZoomEnabled.value || !graphSvgRef.value || !graphContainerRef.value || !zoomImageUrl.value) return
+
+    const svgRect = graphSvgRef.value.getBoundingClientRect()
+    const containerRect = graphContainerRef.value.getBoundingClientRect()
+
+    const pointerX = event.clientX - svgRect.left
+    const pointerY = event.clientY - svgRect.top
+
+    const clampedX = clamp(pointerX, 0, svgRect.width)
+    const clampedY = clamp(pointerY, 0, svgRect.height)
+
+    const bgX = clampedX * ZOOM_FACTOR - LENS_SIZE / 2
+    const bgY = clampedY * ZOOM_FACTOR - LENS_SIZE / 2
+
+    zoomBackgroundSize.value = `${svgRect.width * ZOOM_FACTOR}px ${svgRect.height * ZOOM_FACTOR}px`
+    zoomBackgroundPosition.value = `${-bgX}px ${-bgY}px`
+
+    const lensLeft = clamp(event.clientX - containerRect.left + CURSOR_OFFSET, 0, containerRect.width - LENS_SIZE)
+    const lensTop = clamp(event.clientY - containerRect.top + CURSOR_OFFSET, 0, containerRect.height - LENS_SIZE)
+
+    zoomLensPosition.value = { left: lensLeft, top: lensTop }
+    isZoomLensVisible.value = true
+}
+
+const handleGraphMouseLeave = () => {
+    isZoomLensVisible.value = false
 }
 
 // shape_id for inbound K line is 9495
@@ -236,12 +308,12 @@ onMounted(async () => {
 watch(
     () => displayTrips.value,
     (allTrips) => {
-        if (isLoading.value || !allTrips.length) return;
+        if (isLoading.value || !allTrips.length || !graphSvgRef.value || !graphContainerRef.value) return;
 
-        const svg = d3.select('#line-graph');
+        const svg = d3.select(graphSvgRef.value);
         svg.selectAll('*').remove();
 
-        const container = d3.select('.graph-container');
+        const container = d3.select(graphContainerRef.value);
         let tooltip = container.select('.graph-tooltip');
         if (tooltip.empty()) {
             tooltip = container.append('div')
@@ -591,9 +663,19 @@ watch(
             .attr('font-size', '14px')
             .attr('fill', 'white') // Text color to contrast with the black background
             .text('Surface');
+
+        updateZoomSnapshot();
     },
     { immediate: true }
 );
+
+watch(isZoomEnabled, (enabled) => {
+    if (!enabled) {
+        isZoomLensVisible.value = false
+    } else {
+        updateZoomSnapshot()
+    }
+})
 </script>
 
 <template>
@@ -631,11 +713,27 @@ watch(
 
                             <!-- Trip navigation -->
                             <div class="mb-4 flex gap-2">
-                    
+                                <v-btn
+                                    class="mr-2"
+                                    size="small"
+                                    :color="isZoomEnabled ? 'primary' : 'secondary'"
+                                    @click="toggleZoom"
+                                >
+                                    {{ isZoomEnabled ? 'Disable Zoom' : 'Enable Zoom' }}
+                                </v-btn>
+                                <span v-if="isZoomEnabled" class="zoom-hint">
+                                    Hover over the graph to preview a magnified area.
+                                </span>
                             </div>
 
                             <!-- Graph container with loader overlay -->
-                            <div class="graph-container relative">
+                            <div
+                                ref="graphContainerRef"
+                                class="graph-container relative"
+                                :class="{ 'zoom-active': isZoomEnabled }"
+                                @mousemove="handleGraphMouseMove"
+                                @mouseleave="handleGraphMouseLeave"
+                            >
                                 <div
                                     v-if="isLoading"
                                     id="loader"
@@ -647,7 +745,12 @@ watch(
                                         size="64"
                                     />
                                 </div>
-                                <svg id="line-graph"></svg>
+                                <div
+                                    v-if="isZoomEnabled && isZoomLensVisible"
+                                    class="zoom-lens"
+                                    :style="zoomLensStyles"
+                                ></div>
+                                <svg id="line-graph" ref="graphSvgRef"></svg>
                             </div>
                         </v-card-text>
                     </v-card>
@@ -726,6 +829,10 @@ div.v-col {
     height: 100%;
 }
 
+.graph-container.zoom-active {
+    cursor: crosshair;
+}
+
 .graph-tooltip {
     position: absolute;
     pointer-events: none;
@@ -750,6 +857,22 @@ div.v-col {
     border-radius: 4px;
     border-top-left-radius: 0;
     border-bottom-left-radius: 0;
+}
+
+.zoom-lens {
+    position: absolute;
+    pointer-events: none;
+    border: 2px solid #1976d2;
+    border-radius: 6px;
+    background-color: #fff;
+    background-repeat: no-repeat;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    z-index: 15;
+}
+
+.zoom-hint {
+    font-size: 0.85rem;
+    color: #444;
 }
 
 .totals-wrapper {
