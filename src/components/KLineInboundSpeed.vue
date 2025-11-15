@@ -695,10 +695,10 @@ watch(isZoomEnabled, (enabled) => {
                                 </span>
                             </div>
 
-                            <!-- Trip navigation -->
-                            <div class="mb-4 flex gap-2">
+                            <!-- Toggle Zoom Function -->
+                            <div class="mb-4 flex gap-2 zoom-controls">
                                 <v-btn
-                                    class="mr-2"
+                                    class="mr-2 zoom-button"
                                     size="small"
                                     :color="isZoomEnabled ? 'primary' : 'secondary'"
                                     @click="toggleZoom"

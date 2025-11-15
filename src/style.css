@@ -122,3 +122,14 @@ main.content {
 .app-layout .nav-buttons h1 {
     font-size: 24px;
 }
+
+.zoom-controls {
+    display: flex;
+    align-items: center;
+    justify-content: start;
+}
+
+.zoom-controls .zoom-hint {
+    max-width: 20rem;
+    font-size: 0.875rem;
+}
